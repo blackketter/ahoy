@@ -21,3 +21,4 @@
 .emacs.desktop*
 TAGS*~
 ._.DS_Store
+.config.old

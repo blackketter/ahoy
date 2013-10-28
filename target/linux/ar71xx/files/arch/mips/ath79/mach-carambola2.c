@@ -26,6 +26,16 @@
 #define CARAMBOLA2_GPIO_LED_ETH0		14
 #define CARAMBOLA2_GPIO_LED_ETH1		13
 
+#define AHOY_GPIO_LED_RED			13
+#define AHOY_GPIO_LED_GREEN			14
+#define AHOY_GPIO_LED_BLUE			15
+#define AHOY_GPIO_LED_WHITE			16
+
+#define AHOY_GPIO_BTN_SETUP			4
+#define AHOY_GPIO_BTN_GO			3
+#define AHOY_GPIO_BTN_VOLUMEUP			5
+#define AHOY_GPIO_BTN_VOLUMEDOWN		2
+
 #define CARAMBOLA2_GPIO_BTN_JUMPSTART		11
 #define CARAMBOLA2_GPIO_BTN_RESET		12
 
@@ -38,6 +48,7 @@
 #define CARAMBOLA2_WMAC_MAC_OFFSET		0x1002
 
 static struct gpio_led carambola2_leds_gpio[] __initdata = {
+/*
 	{
 		.name		= "carambola2:green:wlan",
 		.gpio		= CARAMBOLA2_GPIO_LED_WLAN,
@@ -51,9 +62,60 @@ static struct gpio_led carambola2_leds_gpio[] __initdata = {
 		.gpio		= CARAMBOLA2_GPIO_LED_ETH1,
 		.active_low	= 0,
 	}
+*/
+	{
+		.name		= "ahoy:red:red",
+		.gpio		= AHOY_GPIO_LED_RED,
+		.active_low	= 1,
+	}, {
+		.name		= "ahoy:green:green",
+		.gpio		= AHOY_GPIO_LED_GREEN,
+		.active_low	= 0,
+	}, {
+		.name		= "ahoy:blue:blue",
+		.gpio		= AHOY_GPIO_LED_BLUE,
+		.active_low	= 0,
+	}, {
+		.name		= "ahoy:white:white",
+		.gpio		= AHOY_GPIO_LED_WHITE,
+		.active_low	= 1,
+	}
 };
 
 static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
+	{
+		.desc		= "setup button",
+		.type		= EV_KEY,
+		.code		= KEY_SETUP,
+		.debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
+		.gpio		= AHOY_GPIO_BTN_SETUP,
+		.active_low	= 1,
+	},
+	{
+		.desc           = "main button",
+                .type           = EV_KEY,
+                .code           = KEY_OK,
+                .debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
+                .gpio           = AHOY_GPIO_BTN_GO,
+                .active_low     = 1,
+	},
+        {
+                .desc           = "volume up button",
+                .type           = EV_KEY,
+                .code           = KEY_VOLUMEUP,
+                .debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
+                .gpio           = AHOY_GPIO_BTN_VOLUMEUP,
+                .active_low     = 1,
+        },
+        {
+                .desc           = "volume down button",
+                .type           = EV_KEY,
+                .code           = KEY_VOLUMEDOWN,
+                .debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
+                .gpio           = AHOY_GPIO_BTN_VOLUMEDOWN,
+                .active_low     = 1,
+        }
+/*
 	{
 		.desc		= "jumpstart button",
 		.type		= EV_KEY,
@@ -70,11 +132,12 @@ static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
 		.gpio		= CARAMBOLA2_GPIO_BTN_RESET,
 		.active_low	= 1,
 	}
+*/
 };
 
 static struct i2c_gpio_platform_data carambola2_i2c_gpio_data = {
-	.sda_pin        = 18,
-	.scl_pin        = 19,
+	.sda_pin        = 1, // for ahoy, carambola was 18,
+	.scl_pin        = 0, // for ahoy, carambola was 19,
 };
 
 static struct platform_device carambola2_i2c_gpio = {

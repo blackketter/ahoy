@@ -1,0 +1,19 @@
+athplay
+-------
+Prerequisite: Refer to README of ath-i2s driver
+
+$ athplay [-r] <file>
+
+e.g.,
+
+To Play:
+$ athplay test.wav
+
+To Record:
+$ athplay -r rec.wav
+
+To Pause/Resume:
+$ kill -s 16/17 <pid> [16/17 - Pause/Resume]
+
+Note: If testing for Pause/Resume, do not run into loop.
+

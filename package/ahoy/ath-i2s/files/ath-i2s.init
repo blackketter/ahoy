@@ -1,0 +1,10 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2013  
+
+START=39
+
+start() {
+	[ -d /sys/module/ath_i2s ] && {
+		mknod /dev/i2s c 253 0	
+	}		
+}

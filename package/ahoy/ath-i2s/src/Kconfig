@@ -1,0 +1,2 @@
+config ATH-I2S
+	tristate "Atheros AR9331 Audio Driver"

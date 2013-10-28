@@ -1,0 +1,1 @@
+obj-m += ath-i2s.o

@@ -38,11 +38,13 @@ LUALIB_API int i2c_version(lua_State *L){
 
 LUALIB_API int i2c_help(lua_State *L){
     lua_pushstring(L, "usage:\n"
-                      "status = write(bus(int), device(int), data(string))\n"
-                      "status, data = read(bus(int), device(int), read length(int), [data(string)])\n"
-                      "   (optional data is written before read)\n"
+    
+    				  "status = write(bus(int), device(int), register(int), data(int))...\n"
+    				  "status, data... = read(bus(int), device(int), register(int), [count(int)])\n"
+    				  "		(optional count for number of consecutive registers to read)\n"    				  
                       "   status ok: ack=0\n"
                       "   status error: nack=1, send error=2, bus error=3, parameter error=4\n"
+    
                       "version - version string\n");
     return 1;
 }
@@ -92,7 +94,7 @@ int i2c_rw(  int bus,
         packets.msgs = &messages[1];    //only read
         packets.nmsgs = 1;
     }
-   
+    
     if ((f = open(dev, O_RDWR)) < 0) {
         return RW_ERROR_BUS;
     }
@@ -116,7 +118,8 @@ int i2c_rw(  int bus,
 /* LUA parameters:
  * int i2c bus number
  * int address
- * string data to write
+ * int starting register
+ * int data bytes...
  *
  * Return values:
  * status
@@ -126,19 +129,41 @@ LUALIB_API int i2c_write(lua_State *L){
     int args;
     int bus;
     int address;
+    int reg;
     
     int wlen;
-    const char *wptr;
+    unsigned char *wptr = 0;
 
-    if( lua_gettop(L) < 3){
+    if( lua_gettop(L) < 4){
         return luaL_error(L, "Wrong number of arguments");
     }
     bus = lua_tointeger (L, 1);
     address = lua_tointeger(L, 2);
-    wptr = lua_tolstring(L, 3, &wlen);
+	reg = lua_tointeger(L, 3);
+    
+    if (lua_isnumber(L, 4)) {
+		/* buffer length is number of bytes pushed after bus, address and reg plus one byte for the reg address */
+		wlen = lua_gettop(L) - 3 + 1; 
+	
+		wptr = malloc( wlen );
+		if (!wptr) {
+			return luaL_error(L, "Malloc failed for i2c write buffer");
+		}
+
+		/* first byte is the register address */
+		wptr[0] = reg;
+	
+		/* subsequent bytes are pulled from the stack */
+		for (int i = 1; i < wlen; i++) {
+			wptr[i] = lua_tointeger(L, i + 3);
+		}    
+    } else if (lua_istable(L, 4)) {
+    	// djb - accept an array of values. (already accept a series of parameters above), until then use unpack
+    }
     
     //write back i2c write status
     lua_pushnumber(L, i2c_rw(bus, address, wptr, wlen, 0, 0));
+    if (wptr) free(wptr);
     return 1;
 }
 
@@ -146,20 +171,20 @@ LUALIB_API int i2c_write(lua_State *L){
  * Parameters:
  * int bus
  * int address
- * int length
- * optional string data to write before read (probably set i2c device internal address or so)
+ * int reg
+ * int count
  *
  * Return:
  * Status
- * int number of bytes read
- * string data read from device
+ * data...
  */
 LUALIB_API int i2c_read(lua_State *L){
     int bus;
     int address;
-    int rlen;
-    int wlen=0;
-    const char *wptr=0;
+    int reg;
+    int count=1;
+
+    const unsigned char *wptr=0;
 
     if( lua_gettop(L) < 3 ){
         return luaL_error(L, "Wrong number of arguments");
@@ -168,19 +193,34 @@ LUALIB_API int i2c_read(lua_State *L){
     //parse input
     bus = lua_tointeger (L, 1);
     address = lua_tointeger(L, 2);
-    rlen = lua_tointeger(L, 3);
-    wptr = (lua_gettop(L) == 4) ? lua_tolstring(L, 4, &wlen) : 0;
+    reg = lua_tointeger(L, 3);
+    count = (lua_gettop(L) == 4) ? lua_tointeger(L, 4) : 1;
     
     /* transfer data */
     {
-        char rdata[rlen];
+        unsigned char rdata[count];
+		unsigned char regbyte = reg;    
+		
+		/* do a dummy write of a single byte to set the register position that we want to read */
+		/* followed by the actual read of requested bytes */ 
+		int fail = i2c_rw(bus, address, &regbyte, sizeof(regbyte), &rdata[0], count);
+
+		if (fail != RW_ACK) 
+			return luaL_error(L, "i2c_rw failed with %d", fail);
+		
+		lua_newtable(L);
+		
+		for (int i = 0; i < count; i++)  {
+			lua_pushnumber(L, i+1); // lua is one based
+        	lua_pushnumber(L, rdata[i]); 
+        	lua_settable(L, -3);
+        }
         
-        lua_pushnumber(L, i2c_rw(bus, address, wptr, wlen, &rdata[0], rlen));
-        lua_pushlstring(L, &rdata[0], rlen);
-        return 2;
+        return 1;
     }
     
 }
+
 
 /* functions exposed to lua */
 static const luaL_reg i2c_functions[] = {

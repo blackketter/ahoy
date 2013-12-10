@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luai2c
-PKG_RELEASE:=1
+PKG_RELEASE:=0.91
 
 include $(INCLUDE_DIR)/package.mk
 

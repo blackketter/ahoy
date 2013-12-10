@@ -23,17 +23,31 @@ define Package/ahoy/description
   Main Ahoy application
 endef
 
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) ./src/* $(PKG_BUILD_DIR)/
+endef
+
 define Build/Compile
+	$(MAKE) -C $(PKG_BUILD_DIR)/ \
+		LIBDIR="$(TARGET_LDFLAGS)" \
+		CC="$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_CPPFLAGS) -std=gnu99" \
+		LD="$(TARGET_CROSS)ld -shared" \
+		all
 endef
 
 define Package/ahoy/install
 	$(INSTALL_DIR) $(1)/ahoy
-	$(INSTALL_DATA) ./files/hwcodec.lua $(1)/ahoy/hwcodec.lua
+	$(INSTALL_DATA) ./files/codec.lua $(1)/ahoy/codec.lua
 	$(INSTALL_BIN) ./files/ahoy.lua $(1)/ahoy/ahoy.lua
 	$(INSTALL_DATA) ./files/i2c-test.lua $(1)/ahoy/i2c-test.lua
 
 	$(INSTALL_DIR) $(1)/ahoy/sounds
 	$(INSTALL_DATA) ./files/sounds/hail.wav $(1)/ahoy/sounds/hail.wav
+	
+	$(INSTALL_DIR) $(1)/usr/lib/lua
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/audio.so $(1)/usr/lib/lua
+
 endef
 
 $(eval $(call BuildPackage,ahoy))

@@ -23,11 +23,10 @@
 #include "933x.h"
 #include "ath-i2s.h"
 
+#undef I2S_DEBUG
 #undef AOW
 #undef USE_MEMCPY
 #define MAX_I2S_WRITE_RETRIES 2
-
-#define I2S_DEBUG
 
 int ath_i2s_major = 253;
 int ath_i2s_minor = 0;
@@ -499,11 +498,11 @@ ssize_t ath_i2s_wr(struct file * filp, const char __user * buf,
     dmabuf->tail = tail;
 
     if (need_start) {
-        printk("I2S STARTING\n");
+//        printk("I2S STARTING\n");
         ath_i2s_dma_desc((unsigned long) desc_p, mode);
         ath_i2s_dma_start(mode);
     } else if (!sc->ppause) {
-        //printk("I2S RESUMING\n");
+//        printk("I2S RESUMING\n");
         ath_i2s_dma_resume(mode);
     }
 
@@ -607,6 +606,7 @@ eagain:
             return 0;
         }
 #endif
+
     } while(tmpcount);
 
     // TODO: assert count is evenly divisible by sample size at the top
@@ -946,10 +946,10 @@ irqreturn_t ath_i2s_intr(int irq, void *dev_id, struct pt_regs *regs)
     }
 #endif
     if (r & ATH_MBOX_RX_UNDERFLOW) {
-        printk("audio dma rx underflow");
+        printk("audio dma rx underflow\n");
     }
     if (r & ATH_MBOX_TX_OVERFLOW) {
-        printk("audio dma tx underflow");
+        printk("audio dma tx underflow\n");
     }
 
     /* Ack the interrupts */

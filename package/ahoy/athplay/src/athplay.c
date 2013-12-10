@@ -61,6 +61,8 @@ typedef struct {
 
 char *audev = "/dev/i2s";
 int audio, bufsz, fine, dbg, recorder = 0;
+int loop = 0;
+
 int valfix = -1, mclk_sel = 0;	/* Audio parameters */
 
 #define dp(...)	do { if (dbg) { fprintf(stderr, __VA_ARGS__); } } while(0)
@@ -375,7 +377,7 @@ main (int argc, char *argv[])
 	bufsz = 0;
 	fine=-2;
 
-	while ((optc = getopt (argc, argv, "mrpv:t:d:f:")) != -1) {
+	while ((optc = getopt (argc, argv, "mrplv:t:d:f:")) != -1) {
 		switch (optc) {
 			case 'v': valfix = atoi (optarg); break;
 			case 't': bufsz = atoi (optarg); break;
@@ -388,6 +390,9 @@ main (int argc, char *argv[])
 					fine = 0;
 				}
 				break;
+			case 'l': /* loop playback audio indefinitely */
+			  loop = 1;
+			  break;
 			case 'p': /* Turn on prints */
 				dbg = 1;
 				break;
@@ -427,7 +432,10 @@ main (int argc, char *argv[])
     if(recorder) {
 	    record(fd);
     } else {
-	    playwav(fd);
+      do {
+        lseek(fd, 0, SEEK_SET);
+  	    playwav(fd);
+  	  } while (loop);
     }
 	close(fd);
 rep:

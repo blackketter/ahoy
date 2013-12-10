@@ -7,12 +7,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=opus
-PKG_VERSION:=1.0.3
+PKG_VERSION:=1.1
 PKG_RELEASE:=$(PKG_SOURCE_VERSION)
 
 PKG_SOURCE:=opus-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://downloads.xiph.org/releases/opus/
-PKG_MD5SUM:=86eedbd3c5a0171d2437850435e6edff
+PKG_MD5SUM:=c5a8cf7c0b066759542bc4ca46817ac6
 
 include $(INCLUDE_DIR)/package.mk
 

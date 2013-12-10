@@ -158,7 +158,7 @@ LUALIB_API int i2c_write(lua_State *L){
 			wptr[i] = lua_tointeger(L, i + 3);
 		}    
     } else if (lua_istable(L, 4)) {
-    	// djb - accept an array of values. (already accept a series of parameters above), until then use unpack
+    	// djb - todo: accept an array of values. (already accept a series of parameters above), until then use unpack
     }
     
     //write back i2c write status

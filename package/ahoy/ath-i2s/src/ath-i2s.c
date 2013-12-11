@@ -699,7 +699,7 @@ void ath_i2s_clk(unsigned long frac, unsigned long posedge)
      */
     unsigned int rddata;
 
-    printk("CLOCK CLK_DIV: %d, POSEDGE: %d\n", frac, posedge);
+    //printk("CLOCK CLK_DIV: %d, POSEDGE: %d\n", frac, posedge);
     ath_reg_wr(ATH_STEREO_CLK_DIV, frac);
     //printk("CLOCK posedge 2\n");
     //ath_reg_rmw_clear(ATH_STEREO_CONFIG, ATH_STEREO_CONFIG_PSEDGE(0xff));
@@ -710,7 +710,7 @@ void ath_i2s_clk(unsigned long frac, unsigned long posedge)
     //ath_reg_rmw_clear(ATH_STEREO_CONFIG, ATH_STEREO_CONFIG_PSEDGE(0xff));
     //ath_reg_rmw_set(ATH_STEREO_CONFIG, (ATH_STEREO_CONFIG_PSEDGE(posedge) | ATH_STEREO_CONFIG_RESET));
 
-    printk("CLOCK posedge\n");
+    // printk("CLOCK posedge\n");
     rddata = ath_reg_rd(ATH_STEREO_CONFIG);
     rddata = rddata & 0xffffff00;
     rddata = rddata | posedge;

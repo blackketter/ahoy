@@ -1,7 +1,6 @@
 LUA_INC= /usr/include/lua5.1
 
-#~ WARN= -Wall -Wmissing-prototypes -Wmissing-declarations -ansi -pedantic
-WARN= 
+WARN= -Wall -Werror -Wmissing-prototypes -Wmissing-declarations -std=c99 -pedantic
 INCS= -I$(LUA_INC)
 CFLAGS= -O2 $(WARN) $(INCS) $(DEFS) -fPIC
 

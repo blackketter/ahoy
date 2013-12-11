@@ -70,6 +70,17 @@ function codec.init()
       0x00         -- Reg 82: unmute adc
     )
 
+  i2c.write(0, 0x18, -- bus 0, device 0x18 : tlv320aic3100
+    86,          -- starting at register 86
+      0xA0,      -- Reg 86: enable AGC, -10dB
+      0xFE,      -- Reg 87: AGC hysteresis=DISABLE, noise threshold = -90dB
+      0x50,      -- Reg 88:  AGC maximum gain= 40 dB
+      0x68,      -- Reg 89: Attack time=864/Fs
+      0xA8,      -- Reg 90: Decay time=22016/Fs
+      0x00,      -- Reg 91: Noise debounce 0 ms
+      0x00       -- Reg 92: Signal debounce 0 ms
+    )
+
 --  printpage() -- current page is 0
 
   --------------------------------------------------------------------------------

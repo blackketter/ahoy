@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <string.h>
 
 #include "i2sio.h"
 
@@ -16,16 +17,11 @@
 
 # define AUDIO_FILE_KEY "audio-file-key"
 
-LUALIB_API int audio_init(lua_State *L);
-
 LUALIB_API int audio_write(lua_State *L);
 LUALIB_API int audio_read(lua_State *L);
 
 LUALIB_API int audio_pause(lua_State *L);
 LUALIB_API int audio_resume(lua_State *L);
-
-LUALIB_API int audio_sampleSize(lua_State *L);
-LUALIB_API int audio_sampleRate(lua_State *L);
 
 LUALIB_API int audio_sampleCount(lua_State *L);
 
@@ -55,16 +51,49 @@ int getAudioFile(lua_State *L) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-LUALIB_API int audio_init(lua_State *L){
+LUALIB_API int audio_open(lua_State *L){
+    
+    int sampleSize = lua_tointeger(L, 1);
+    int sampleRate = lua_tointeger(L, 2);  
+    const char* mode = luaL_optstring(L,3,"w");
+    int modenum = O_WRONLY;
     
     int* audiof = (int*)lua_newuserdata(L, sizeof(int));
-    *audiof = open ("/dev/i2s", O_WRONLY ); //O_RDWR | O_NONBLOCK);
-    if (*audiof == -1) {
-      luaL_error(L, "Failed to open /dev/i2s errno: %d", errno);
-    }
-    fprintf(stderr, "audio file opened: %d\n", *audiof);
     
+//    fprintf(stderr, "opening with mode: %s\n", mode);
+    
+    if (strcmp(mode,"w") == 0) 
+        modenum = O_WRONLY;
+    else if (strcmp(mode, "r") == 0)
+        modenum = O_RDONLY;
+    else 
+      luaL_error(L,"File mode %s is not supported in the audio device, yet", mode);
+        
+      
+    *audiof = open ("/dev/i2s", modenum);
+
+    if (*audiof == -1) {
+      luaL_error(L, "Failed to open /dev/i2s err: %s", strerror(errno));
+    }
+  
     lua_setfield(L, LUA_REGISTRYINDEX, AUDIO_FILE_KEY);
+
+//    fprintf(stderr, "audio file opened: %d, mode: %d\n", *audiof, modenum);
+
+    if (sampleSize == 0) 
+      sampleSize = 16;
+      
+    if (sampleRate == 0)
+      sampleRate = 44100;
+      
+    if (sampleSize < 0 || ioctl(*audiof, I2S_DSIZE, sampleSize) < 0) {
+      luaL_error(L, "Failed to set I2S_DSIZE to %d: %s", sampleSize, strerror(errno));
+    }
+
+    if (sampleRate < 0 || ioctl(*audiof, I2S_FREQ, sampleRate) < 0) {
+      luaL_error(L, "Failed to set I2S_FREQ to %d: %s", sampleRate, strerror(errno));
+    }
+
     return 0;
 }
 
@@ -75,6 +104,7 @@ LUALIB_API int audio_close(lua_State *L) {
     close(audiof);
     lua_pushnil(L);
     lua_setfield(L, LUA_REGISTRYINDEX, AUDIO_FILE_KEY);
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +112,6 @@ LUALIB_API int audio_close(lua_State *L) {
 LUALIB_API int audio_write(lua_State *L){
 	int		  writeResult=0;
 	const char	  *audioData, *startPoint;
-	u_char	*tmp;
 	size_t  remainingBytes;
   size_t audioDataLength;
 
@@ -103,7 +132,7 @@ eagain:
   do {     
       writeResult = write(audiof, startPoint, remainingBytes);  
         
-      fprintf(stderr, "Wrote %d bytes of %d remaining\n", writeResult, remainingBytes);                   
+//      fprintf(stderr, "Wrote %d bytes of %d remaining\n", writeResult, remainingBytes);                   
       if (writeResult < 0 && errno == EAGAIN) {                       
           fprintf(stderr, "Goto eagain");
           goto eagain;                                        
@@ -113,9 +142,9 @@ eagain:
         remainingBytes = remainingBytes - writeResult;                              
         startPoint += writeResult;
       } else {
-//        fprintf(stderr, "write failed %d\n",errno);
+//        fprintf(stderr, "write failed %s\n",strerror(errno));
         // djb - This error doesn't get displayed when killing process with control-c/sigint, rather we get a segfault
-        lualL_error(L, "Failed to audio_write with errno: %d", errno);
+        luaL_error(L, "Failed to audio_write: %s", strerror(errno));
       }                                           
       
   } while (remainingBytes);                                      
@@ -128,7 +157,7 @@ eagain:
 
 LUALIB_API int audio_read(lua_State *L){
 
-  size_t readResult;
+  ssize_t readResult;
   luaL_Buffer b;
 
   int audiof = getAudioFile(L);
@@ -147,18 +176,30 @@ LUALIB_API int audio_read(lua_State *L){
   }
   
   luaL_buffinit(L, &b);
-  
-//eagain:
-  readResult = read(audiof, readBuf, requestSize);
+  do {  
+eagain:
+    readResult = read(audiof, readBuf, requestSize);
 
-//    if (readResult < 0 && errno == EAGAIN) {
-//      goto eagain;
-//    }
-  
-  if (readResult > 0) {
-    luaL_addlstring (&b, readBuf, readResult);
-  }
+    if (readResult < 0) {
+      if (errno == EAGAIN) {
+        fprintf(stderr, "EAGAIN on audio read\n"); 
+        goto eagain;
+      } else {
+        luaL_error(L, "Audio read failed: %s", strerror(errno));
+      }
+    }
 
+    if (readResult > 0) {
+      luaL_addlstring (&b, readBuf, readResult);
+      requestSize -= readResult;
+    }
+    
+    if (readResult == 0) {
+    
+    }
+    
+  } while (requestSize > 0);
+  
   luaL_pushresult(&b);
 
   free(readBuf);    
@@ -172,10 +213,10 @@ LUALIB_API int audio_pause(lua_State *L){
   int audiof = getAudioFile(L);
   
   if (ioctl(audiof, I2S_PAUSE, 1) < 0) {
-    luaL_error(L, "Failed to pause recording audio, errno: %d", errno);
+    luaL_error(L, "Failed to pause recording audio: %s", strerror(errno));
   }
   if (ioctl(audiof, I2S_PAUSE, 0) < 0) {
-    luaL_error(L, "Failed to pause playback audio, errno: %d", errno);
+    luaL_error(L, "Failed to pause playback audio: %s", strerror(errno));
   }
   
   return 0;
@@ -187,39 +228,12 @@ LUALIB_API int audio_resume(lua_State *L){
   int audiof = getAudioFile(L);
     
   if (ioctl(audiof, I2S_RESUME, 1) < 0) {
-    luaL_error(L, "Failed to resume recording audio, errno: %d", errno);
+    luaL_error(L, "Failed to resume recording audio: %s", strerror(errno));
   }
   if (ioctl(audiof, I2S_RESUME, 0) < 0) {
-    luaL_error(L, "Failed to resume playback audio, errno: %d", errno);
+    luaL_error(L, "Failed to resume playback audio: %s", strerror(errno));
   }
   
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-LUALIB_API int audio_sampleSize(lua_State *L){
-
-  int audiof = getAudioFile(L);
-  int sampleSize = lua_tointeger(L, -1);
-
-	if (sampleSize < 0 || ioctl(audiof, I2S_DSIZE, sampleSize) < 0) {
-		luaL_error(L, "Failed to set I2S_DSIZE to %d, errno: %d", sampleSize, errno);
-	}
-	    
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-LUALIB_API int audio_sampleRate(lua_State *L){
-
-  int audiof = getAudioFile(L);
-
-  int sampleRate = lua_tointeger(L, -1);  
-
-	if (sampleRate < 0 || ioctl(audiof, I2S_FREQ, sampleRate) < 0) {
-		luaL_error(L, "Failed to set I2S_FREQ to %d, errno: %d", sampleRate, errno);
-	}
-
   return 0;
 }
 
@@ -239,7 +253,7 @@ LUALIB_API int audio_version(lua_State *L){
 ////////////////////////////////////////////////////////////////////////////////
 /* functions exposed to lua */
 static const luaL_reg audio_functions[] = {
-  {"init", audio_init},
+  {"open", audio_open},
   {"close",audio_close},
 
   {"write", audio_write},
@@ -248,8 +262,6 @@ static const luaL_reg audio_functions[] = {
   {"pause", audio_pause},
   {"resume", audio_resume},
 
-  {"sampleSize", audio_sampleSize},
-  {"sampleRate", audio_sampleRate},
   {"sampleCount", audio_sampleCount},
 
   {"version", audio_version},

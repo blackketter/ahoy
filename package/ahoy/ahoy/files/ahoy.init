@@ -1,0 +1,21 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2013  
+
+START=40
+
+start_stop() {
+  cd /ahoy
+	start-stop-daemon $1 -b -m -p /var/run/ahoy.pid -x /ahoy/ahoy.lua
+}
+
+start() {
+	start_stop -S
+}
+
+reload() {
+	return
+}
+
+stop() {
+	start_stop -K
+}

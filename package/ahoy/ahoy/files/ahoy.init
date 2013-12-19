@@ -3,13 +3,9 @@
 
 START=40
 
-start_stop() {
-  cd /ahoy
-	start-stop-daemon $1 -b -m -p /var/run/ahoy.pid -x /ahoy/ahoy.lua
-}
-
 start() {
-	start_stop -S
+  cd /ahoy
+  start-stop-daemon -S -b -m -p /var/run/ahoy.pid -x /ahoy/ahoy.lua
 }
 
 reload() {
@@ -17,5 +13,5 @@ reload() {
 }
 
 stop() {
-	start_stop -K
+  start-stop-daemon -K -b -p /var/run/ahoy.pid 
 }

@@ -1,0 +1,5 @@
+#!/bin/bash
+make
+scp main.hex root@ahoy3.local:/ahoy/mcu/ 
+ssh root@ahoy3.local "cd /ahoy/mcu;./upgrade"
+

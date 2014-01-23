@@ -1,6 +1,6 @@
 require "nixio"
 -- set the ident string to the filename that first included this module
-nixio.openlog(debug.getinfo(3, "S").short_src, "odelay", "LOG_USER")
+nixio.openlog(debug.getinfo(3, "S").short_src, "odelay")
 
 local _error = error
 error =  function(txt, level)

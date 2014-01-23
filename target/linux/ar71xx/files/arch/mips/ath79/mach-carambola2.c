@@ -83,6 +83,7 @@ static struct gpio_led carambola2_leds_gpio[] __initdata = {
 };
 
 static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
+
 	{
 		.desc		= "setup button",
 		.type		= EV_KEY,
@@ -114,8 +115,8 @@ static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
                 .debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
                 .gpio           = AHOY_GPIO_BTN_VOLUMEDOWN,
                 .active_low     = 1,
-        }
-/*
+        },
+
 	{
 		.desc		= "jumpstart button",
 		.type		= EV_KEY,
@@ -124,6 +125,7 @@ static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
 		.gpio		= CARAMBOLA2_GPIO_BTN_JUMPSTART,
 		.active_low	= 1,
 	},
+
 	{
 		.desc		= "reset button",
 		.type		= EV_KEY,
@@ -132,7 +134,6 @@ static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
 		.gpio		= CARAMBOLA2_GPIO_BTN_RESET,
 		.active_low	= 1,
 	}
-*/
 };
 
 static struct i2c_gpio_platform_data carambola2_i2c_gpio_data = {

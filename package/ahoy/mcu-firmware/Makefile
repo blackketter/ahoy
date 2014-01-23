@@ -31,12 +31,16 @@ define Build/Prepare
 endef
 
 define Build/Compile
-	$(MAKE) all
+	$(MAKE) \
+	-C "$(PKG_BUILD_DIR)" \
+	all
 endef
 
-define Package/luai2c/install
+define Package/mcu-firmware/install
 	$(INSTALL_DIR) $(1)/ahoy/mcu
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/main.hex $(1)/ahoy/mcu/main.hex
+	$(INSTALL_BIN) ./files/avrdude.conf $(1)/ahoy/mcu/avrdude.conf
+	$(INSTALL_BIN) ./files/upgrade $(1)/ahoy/mcu/upgrade
 endef
 
 $(eval $(call BuildPackage,mcu-firmware))

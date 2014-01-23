@@ -760,10 +760,10 @@ int ath_i2s_set_dsize(uint32_t data)
     uint32_t    st_cfg = 0;
 
 #define ATH_STEREO_CONFIG_DEFAULT ( \
-        ATH_STEREO_CONFIG_SPDIF_ENABLE | \
         ATH_STEREO_CONFIG_ENABLE | \
         ATH_STEREO_CONFIG_MASTER)
-        //ATH_STEREO_CONFIG_PSEDGE(2))
+       	//ATH_STEREO_CONFIG_SPDIF_ENABLE | \ 
+	//ATH_STEREO_CONFIG_PSEDGE(2))
 
     switch (data) {
     case 8:
@@ -946,10 +946,10 @@ irqreturn_t ath_i2s_intr(int irq, void *dev_id, struct pt_regs *regs)
     }
 #endif
     if (r & ATH_MBOX_RX_UNDERFLOW) {
-        printk("audio dma rx underflow\n");
+//        printk("audio dma rx underflow\n");
     }
     if (r & ATH_MBOX_TX_OVERFLOW) {
-        printk("audio dma tx underflow\n");
+//        printk("audio dma tx underflow\n");
     }
 
     /* Ack the interrupts */
@@ -965,11 +965,11 @@ irqreturn_t ath_i2s_intr(int irq, void *dev_id, struct pt_regs *regs)
 void ath_i2s_init_reg(int master)
 {
 #define ATH_STEREO_CONFIG_DEFAULT ( \
-                ATH_STEREO_CONFIG_SPDIF_ENABLE | \
                 ATH_STEREO_CONFIG_ENABLE | \
                 ATH_STEREO_CONFIG_PCM_SWAP | \
                 ATH_STEREO_CONFIG_DATA_WORD_SIZE(ATH_STEREO_WS_16B) | \
                 ATH_STEREO_CONFIG_MASTER)
+		//ATH_STEREO_CONFIG_SPDIF_ENABLE | \
                 //ATH_STEREO_CONFIG_PSEDGE(2))
 
     unsigned int rddata;
@@ -977,11 +977,12 @@ void ath_i2s_init_reg(int master)
     /* Reset I2S Controller */
     ath_reset(ATH_RESET_I2S);
     udelay(1000);
-
+#ifdef SPDIF
     // Enable GPIO 23 (spdif) for output
     rddata = ath_reg_rd(ATH_GPIO_OE);
     rddata = rddata | 0x800000;
     ath_reg_wr(ATH_GPIO_OE, rddata);
+#endif
 
     // Enable SPDIF, and I2S
     rddata = ath_reg_rd(ATH_GPIO_FUNCTION_1);
@@ -991,12 +992,12 @@ void ath_i2s_init_reg(int master)
     //     26: I2SO_EN
     rddata = rddata | 0x6c000000;
     ath_reg_wr(ATH_GPIO_FUNCTION_1, rddata);
-
+#ifdef SPDIF
     // Enable SPDIF again
     rddata = ath_reg_rd(ATH_GPIO_FUNCTION_2);
     rddata = rddata | 0x4;
     ath_reg_wr(ATH_GPIO_FUNCTION_2, rddata);
-
+#endif
     // Program Stereo Config Register.
     ath_reg_wr(ATH_STEREO_CONFIG,
                     (ATH_STEREO_CONFIG_DEFAULT |

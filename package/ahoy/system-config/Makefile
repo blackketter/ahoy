@@ -3,7 +3,7 @@
 #
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
-#
+# 
 
 include $(TOPDIR)/rules.mk
 
@@ -19,26 +19,20 @@ define Package/system-config
   DEPENDS:=+dropbear
 endef
 
+define Build/Prepare
+endef
+
+define Build/Compile
+endef
+
+
 define Package/system-config/description
   Linux system configuration files specific to Ahoy
 endef
 
-define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/* $(PKG_BUILD_DIR)/
-endef
-
-define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR)/ \
-		LIBDIR="$(TARGET_LDFLAGS)" \
-		CC="$(TARGET_CC) -Wall -Werror $(TARGET_CFLAGS) $(TARGET_CPPFLAGS)" \
-		LD="$(TARGET_CROSS)ld -shared" \
-		all
-endef
-
-define Package/ahoy/install
+define Package/system-config/install
 	$(INSTALL_DIR) $(1)/etc/dropbear
-	$(INSTALL_DATA) ./files/authorized-keys $(1)/etc/dropbear/authorized-keys
+	$(INSTALL_DATA) ./files/authorized_keys $(1)/etc/dropbear/authorized_keys
 endef
 
 $(eval $(call BuildPackage,system-config))

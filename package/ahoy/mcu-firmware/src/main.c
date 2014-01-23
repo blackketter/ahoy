@@ -1,53 +1,73 @@
+//
+// Firmware for Ahoy AVR MCU 
+// Author: Dean Blackketter, Ahoy
+// Copyright 2014, All Rights Reserved
+//
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define MAX_BRIGHTNESS (699)
-#define PWM_STEPS (700)
+#define MAX_BRIGHTNESS (99)
+#define PWM_STEPS (100)
 
-// bigger is slower
-#define BRIGHTNESS_RAMP_SPEED (1)
+
+volatile uint8_t red = 0;
+volatile uint8_t green = 0;
+volatile uint8_t blue = 0;
+
+ISR(TIM1_COMPA_vect)
+{
+  uint8_t color = 0;
+  static uint8_t pwm_index = 0;
+  pwm_index++;
+  if (pwm_index < red) {
+    color = 1;
+  }
+  if (pwm_index < green) {
+    color += 2;
+  }
+  if (pwm_index < blue) {
+    color += 4;
+  }
+  
+  PORTA = color;
+}
 
 int main(void)
 {
     DDRA = 7;           /* make the LED pin an output */
     PORTA= 0; 
-    char dir = 1;
+
+    // initialize Timer1
+    cli();             // disable global interrupts
+    TCCR1A = 0;        // set entire TCCR1A register to 0
+    TCCR1B = 0;
+ 
+ 
+    // set compare match register to desired timer count:
+    OCR1A = 65;
+
+    // enable timer compare interrupt:
+    TIMSK1 |= (1 << OCIE1A);
     
-    uint16_t pwm_index = 0;
-    uint16_t brightness = 0;
-    uint8_t  k = 0;
-    uint8_t  color = 1;
+    // turn on CTC mode:
+    TCCR1B |= (1 << WGM12);
+    
+    // Full clock speed (no prescaling)
+    TCCR1B |= (1 << CS10);
+    
+    // enable global interrupts:
+    sei();
+    
     for(;;){
-
-      pwm_index++;
-      
-      if (pwm_index > PWM_STEPS) {
-        pwm_index = 0;
-        k++;
-      }
-      
-      if (k > BRIGHTNESS_RAMP_SPEED) {
-        k = 0;
-        
-        brightness += dir;
-
-      }
-      
-      if (brightness > MAX_BRIGHTNESS) {
-        dir = -1;
-      } else if (brightness == 0) {
-        dir = 1;
-        color++;
-        if (color > 7) {
-          color = 1;
-        }
-      }
-
-      if (brightness > pwm_index){
-        PORTA = color;
-      } else {
-        PORTA = 0;
-      }
+      red--;
+      red--;
+      red--;
+      green--;
+      green--;
+      blue--;
+      _delay_ms(4);
     }
+
     return 0;               /* never reached */
 }

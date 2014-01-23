@@ -1,7 +1,7 @@
 # Name: Makefile
-# Author: <insert your name here>
-# Copyright: <insert your copyright message here>
-# License: <insert your license reference here>
+# Author: Dean Blackketter, Ahoy
+# Copyright: 2014
+# License: All Rights Reserved
 
 # This is a prototype Makefile. Modify it according to your needs.
 # You should at least check the settings for

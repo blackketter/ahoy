@@ -6,6 +6,9 @@
 /bin
 /build_dir
 /staging_dir
+/build
+/stage
+/ahoy
 /tmp
 /logs
 /feeds

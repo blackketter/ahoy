@@ -5,7 +5,7 @@ INCS= -I$(LUA_INC)
 CFLAGS= -O2 $(WARN) $(INCS) $(DEFS) -fPIC
 
 # OS dependent
-LIB_OPTION= -shared #for Linux
+LIB_OPTION= -shared -lopus #for Linux
 #LIB_OPTION= -bundle -undefined dynamic_lookup #for MacOS X
 
 LIBNAME= opus.so

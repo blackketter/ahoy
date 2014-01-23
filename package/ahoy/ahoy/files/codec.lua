@@ -3,31 +3,6 @@ local codec = {}
 local i2c = require("i2c")
 
 --------------------------------------------------------------------------------
-local function hexdump(str, spacer)
-    return (
-        string.gsub(str,"(.)",
-            function (c)
-                return string.format("%02X%s",string.byte(c), spacer or "")
-            end
-        )
-    )
-end
-
---------------------------------------------------------------------------------
-local function printpage()
-
-  for i = 0,9 do io.write("   ",i," ") end
-  print()
-  
-  for i,v in ipairs(i2c.read(0, 0x18, 0, 100)) do
-    io.write(string.format("0x%02x ",v))
-    
-    if (i % 10 == 0)  then print(" ", i-10) end
-  end
-  print("")
-end
-
---------------------------------------------------------------------------------
 function codec.init()
 
   -- set page 0

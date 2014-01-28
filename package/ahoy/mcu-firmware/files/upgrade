@@ -4,4 +4,4 @@ echo 13 > /sys/class/gpio/unexport
 echo 14 > /sys/class/gpio/unexport
 echo 15 > /sys/class/gpio/unexport
 rmmod leds_gpio
-avrdude -c linuxgpio -p t24 -C avrdude.conf -U flash:w:main.hex:i -U lfuse:w:0xe2:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
+avrdude -c linuxgpio -p t48 -s -C avrdude.conf -U flash:w:main.hex:i -U lfuse:w:0xee:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m

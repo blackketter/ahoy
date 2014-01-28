@@ -44,7 +44,6 @@ define Package/ahoy/install
 	$(INSTALL_DATA) ./files/leds.lua $(1)/ahoy/leds.lua
 	$(INSTALL_DATA) ./files/buttons.lua $(1)/ahoy/buttons.lua
 	$(INSTALL_DATA) ./files/utils.lua $(1)/ahoy/utils.lua
-	$(INSTALL_DATA) ./files/opussample.lua $(1)/ahoy/opussample.lua
 
 	$(INSTALL_DATA) ./files/strict.lua $(1)/ahoy/strict.lua
 	$(INSTALL_DATA) ./files/syslogger.lua $(1)/ahoy/syslogger.lua

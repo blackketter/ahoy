@@ -43,6 +43,9 @@ endef
 define Package/luaopus/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/opus.so $(1)/usr/lib/lua
+	
+	$(INSTALL_DIR) $(1)/ahoy
+	$(INSTALL_DATA) ./files/opus-test.lua $(1)/ahoy/opus-test.lua
 endef
 
 $(eval $(call BuildPackage,luaopus))

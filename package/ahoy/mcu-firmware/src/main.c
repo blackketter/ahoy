@@ -7,6 +7,19 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
+#if 0
+// fuse information is not propagated to the hex file, so the correct fuse
+// settings are passed via the command line to avrdude, see "upgrade" script
+#include <avr/fuse.h>
+
+FUSES = 
+  {
+    .low = FUSE_CKSEL0 & FUSE_SUT0,
+    .high = HFUSE_DEFAULT,
+    .extended = EFUSE_DEFAULT,
+  };
+#endif
+
 #define MAX_BRIGHTNESS (99)
 #define PWM_STEPS (100)
 
@@ -15,7 +28,8 @@ volatile uint8_t red = 0;
 volatile uint8_t green = 0;
 volatile uint8_t blue = 0;
 
-ISR(TIM1_COMPA_vect)
+// LED PWM interrupt routine
+ISR(TIMER1_COMPA_vect)
 {
   uint8_t color = 0;
   static uint8_t pwm_index = 0;
@@ -30,13 +44,13 @@ ISR(TIM1_COMPA_vect)
     color += 4;
   }
   
-  PORTA = color;
+  PORTC = color;
 }
 
 int main(void)
 {
-    DDRA = 7;           /* make the LED pin an output */
-    PORTA= 0; 
+    DDRC = 7;           /* make the LED pin an output */
+    PORTC= 0; 
 
     // initialize Timer1
     cli();             // disable global interrupts

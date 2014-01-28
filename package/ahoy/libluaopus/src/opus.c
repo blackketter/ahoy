@@ -172,10 +172,11 @@ static const luaL_reg opus_functions[] = {
 //  checks for error code, throws error if there is one, otherwise, returns value
 int opus_check_error(lua_State *L, int x) {
   // all opus errors are negative
-  if (x<0)
-    return luaL_error(L, "%s (%d)", opus_strerror(x), x);
-  else
+  if ( x < 0 ) {
+    return luaL_error(L, "Opus error: %s (%d)", opus_strerror(x), x);
+  } else {
     return x;
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -185,12 +186,16 @@ int opus_check_error(lua_State *L, int x) {
 OpusEncoder* check_enc(lua_State* L, int index)
 {
   void* ud = 0;
+
   luaL_checktype(L, index, LUA_TTABLE);
+
   lua_getfield(L, index, "__self");
+
   ud = luaL_checkudata(L, -1, "opus.encoder");
   lua_pop(L,1);
-  luaL_argcheck(L, ud != 0, 0,"`opus.encoder' expected");  
   
+  luaL_argcheck(L, ud != 0, 0,"`opus.encoder' expected");  
+
   return *((OpusEncoder**)ud);      
 }
 
@@ -225,13 +230,8 @@ LUALIB_API int opus_enc_new(lua_State *L){
   
   // Get metatable 'opus.encoder' store in the registry
   luaL_getmetatable(L, "opus.encoder");
+  lua_setmetatable(L, -2);
   
-  lua_pushvalue(L, -1); // duplicates the metatable
-  lua_setmetatable(L, -3);
-  
-// set the metatable as __index
-  lua_setfield(L, -2, "__index");
-
  // save away the number of channels
   lua_pushinteger(L, channels);
   lua_setfield(L, -2, "channels");
@@ -245,7 +245,6 @@ LUALIB_API int opus_enc_new(lua_State *L){
   luaL_getmetatable(L, "opus.encoder");
   lua_setmetatable(L, -2);
 
-  
   // Set field '__self' of instance table to the encoder user data
   lua_setfield(L, -2, "__self");  
 
@@ -265,7 +264,6 @@ int opus_enc_encode(lua_State *L)
 
   int n = lua_gettop(L);  // Number of arguments
   
-  
   if (n == 2) {
     OpusEncoder* enc = check_enc(L, 1);
 
@@ -279,25 +277,30 @@ int opus_enc_encode(lua_State *L)
     //      why can't the opus lib do this calculation?
     lua_getfield(L, 1, "channels");
     int channels = luaL_checkint(L, -1);
-    
+      
+    lua_pop(L,1);
+     
     int frame_size = pcm_len / sizeof(opus_int16) / channels;
     
     opus_int32 encoded_bytes =	opus_encode (enc, pcm, frame_size, temp_frame, MAX_FRAME_SIZE);
+
     
-    opus_check_error(L, encoded_bytes);
-    
+    opus_check_error(L, encoded_bytes);  
     lua_pushlstring(L, (char*)temp_frame, (size_t)encoded_bytes);
+
+
   } else {
     luaL_error(L, "Got %d arguments expected 2 (self, pcm data)", n); 
   }
   
-  return 0;
+  return 1;
 }
 
 //------------------------------------------------------------------------------
 
 LUALIB_API int opus_enc_free(lua_State *L){
-  OpusEncoder* enc = check_enc(L, 1);
+
+  OpusEncoder* enc = luaL_checkudata(L, 1, "opus.encoder");
 
   opus_encoder_destroy(enc);
   
@@ -609,7 +612,12 @@ void register_enc(lua_State *L)
   luaL_newmetatable(L, "opus.encoder");
   luaL_register(L, 0, enc_gc_functions);      
   luaL_register(L, 0, enc_functions);   
-  lua_pop(L,1);  
+
+  // set the metatable as __index
+  lua_pushvalue(L,-1);
+  lua_setfield(L, -2, "__index");
+
+  lua_pop(L,1);
 }
 
 //------------------------------------------------------------------------------
@@ -622,6 +630,11 @@ void register_dec(lua_State *L)
   luaL_newmetatable(L, "opus.decoder");
   luaL_register(L, 0, dec_gc_functions);      
   luaL_register(L, 0, dec_functions);      
+
+  // set the metatable as __index
+  lua_pushvalue(L,-1);
+  lua_setfield(L, -2, "__index");
+
   lua_pop(L,1);
 }
 
@@ -642,16 +655,11 @@ LUALIB_API int opus_dec_new(lua_State *L){
 
   // Get metatable 'opus.decoder' store in the registry
   luaL_getmetatable(L, "opus.decoder");
-
-  lua_pushvalue(L, -1); // duplicates the metatable
-  lua_setmetatable(L, -3);
+  lua_setmetatable(L, -2);
   
-// set the metatable as __index
-  lua_setfield(L, -2, "__index");
-
- // save away the number of channels
+ // save away the number of channels, with a different name than "channels", which is a bona fide method
   lua_pushinteger(L, channels);
-  lua_setfield(L, -2, "channels");
+  lua_setfield(L, -2, "dec_channels");
 
   // save away the sample rate
   lua_pushinteger(L, Fs);
@@ -710,7 +718,8 @@ LUALIB_API int opus_dec_decode(lua_State *L){
 //------------------------------------------------------------------------------
 
 LUALIB_API int opus_dec_free(lua_State *L){
-  OpusDecoder* dec = check_dec(L, 1);
+
+  OpusDecoder* dec = luaL_checkudata(L, 1, "opus.decoder");
 
   opus_decoder_destroy (dec);
 
@@ -767,22 +776,26 @@ LUALIB_API int opus_dec_bandwidth(lua_State *L){
 
 LUALIB_API int opus_dec_samples_per_frame(lua_State *L){
   int params = lua_gettop(L);
-  const unsigned char *data;
-  size_t data_len;
-  int samples_per_frame;
-  
-  // we had saved away the sample rate, we need it now
-  lua_getfield(L, 1, "samplerate");
-  opus_int32 Fs = luaL_checkint(L, -1);
 
   if (params == 2) {
-    data = (const unsigned char*)lua_tolstring (L, 2, &data_len); 
+ 
+    const unsigned char *data;
+    size_t data_len;
+    int samples_per_frame;
+  
+    data = (const unsigned char*)luaL_checklstring(L, 2, &data_len);
+     
+    // we had saved away the sample rate, we need it now
+    lua_getfield(L, 1, "samplerate");
+    opus_int32 Fs = luaL_checkint(L, -1);
+
     samples_per_frame = opus_check_error(L,opus_packet_get_samples_per_frame (data, Fs));
+    lua_pushinteger(L, samples_per_frame);
+ 
   } else {
     return luaL_error(L, "Got %d arguments expected 2 (self, frame data)", params);
   }
   
-  lua_pushinteger(L, samples_per_frame);
 
   return 1;
 }
@@ -793,13 +806,16 @@ LUALIB_API int opus_dec_channels(lua_State *L){
   int params = lua_gettop(L);
   const unsigned char *data;
   size_t data_len;
-  int channels;
+  int channels = 0;
   
   if (params == 2) {
     data = (const unsigned char*)lua_tolstring (L, 2, &data_len); 
     channels = opus_check_error(L,opus_packet_get_nb_channels (data));
+  } else if (params == 1) {
+    lua_getfield(L, 1, "dec_channels");
+    channels = luaL_checkint(L, -1);
   } else {
-    return luaL_error(L, "Got %d arguments expected 2 (self, frame data)", params);
+    return luaL_error(L, "Got %d arguments expected 1 or 2 (self, optional frame data)", params);
   }
   
   lua_pushinteger(L, channels);
@@ -902,11 +918,16 @@ LUALIB_API int opus_dec_reset(lua_State *L){
 OpusDecoder* check_dec(lua_State* L, int index)
 {
   void* ud = 0;
-  luaL_checktype(L, index, LUA_TTABLE); 
-  lua_getfield(L, index, "__self");
-  ud = luaL_checkudata(L, index, "opus.decoder");
-  luaL_argcheck(L, ud != 0, 0,"`opus.decoder' expected");  
   
+  luaL_checktype(L, index, LUA_TTABLE); 
+  
+  lua_getfield(L, index, "__self");
+  
+  ud = luaL_checkudata(L, -1, "opus.decoder");
+  lua_pop(L,1);
+ 
+  luaL_argcheck(L, ud != 0, 0,"`opus.decoder' expected");  
+
   return *((OpusDecoder**)ud);      
 }
 

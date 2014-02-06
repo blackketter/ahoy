@@ -20,66 +20,92 @@ FUSES =
   };
 #endif
 
-#define MAX_BRIGHTNESS (99)
-#define PWM_STEPS (100)
+///////////////////////////////////////////////////////////////////////////////
+// Button related defines and globals
+///////////////////////////////////////////////////////////////////////////////
 
-#define KEY_INPUT       PIND
+#define BUTTON_INPUT        PINC
+#define BUTTON_PORT         PORTC
+#define BUTTON_PORT_DIRECTION DDRC
 
 #define MAIN_BUTTON (1)
 #define UP_BUTTON (2)
 #define DOWN_BUTTON (4)
+#define SETUP_BUTTON (8)
+#define BUTTON_MASK (0x0f)
 
+volatile char button_state;                         // debounced and inverted button state: 
+                                                    // bit = 1: button pressed 
+volatile char button_press;                         // button press detect 
+
+///////////////////////////////////////////////////////////////////////////////
+// LED related defines and globals
+///////////////////////////////////////////////////////////////////////////////
+
+#define LED_PORT            PORTD
+#define LED_PORT_DIRECTION  DDRD
+
+#define RED_LED (1)
+#define GREEN_LED (2)
+#define BLUE_LED (4)
+#define LED_MASK (0x07)
+
+#define MAX_BRIGHTNESS (99)
+#define PWM_STEPS (100)
 
 volatile uint8_t red = 1;
 volatile uint8_t green = 1;
 volatile uint8_t blue = 1;
 
-volatile char key_state;                         // debounced and inverted key state: 
-                                                 // bit = 1: key pressed 
-volatile char key_press;                         // key press detect 
-
+//////////////////////////////////////////////////////////////////////////
 // LED PWM interrupt routine
 // on 16-bit timer1
+//////////////////////////////////////////////////////////////////////////
+
 ISR(TIMER1_COMPA_vect)
 {
-  uint8_t color = 0;
   static uint8_t pwm_index = 0;
   pwm_index++;
+
+  uint8_t color = LED_MASK;   // high is off, low is on, mask is all off
+
   if (pwm_index < red) {
-    color = 1;
+    color -= RED_LED;  // subtract to turn on
   }
   if (pwm_index < green) {
-    color += 2;
+    color -= GREEN_LED;
   }
   if (pwm_index < blue) {
-    color += 4;
+    color -= BLUE_LED;
   }
   
-  PORTC = color;
+  LED_PORT = color;
 }
 
+//////////////////////////////////////////////////////////////////////////
 // button interrupt service routine on 8-bit timer0
+//////////////////////////////////////////////////////////////////////////
 ISR(TIMER0_OVF_vect)
 {
   static char ct0, ct1; 
   char i; 
 
-  i = key_state ^ ~KEY_INPUT;           // key changed ? 
+  i = button_state ^ ~BUTTON_INPUT;           // button changed ? 
   ct0 = ~( ct0 & i );                   // reset or count ct0 
   ct1 = ct0 ^ (ct1 & i);                // reset or count ct1 
   i &= ct0 & ct1;                       // count until roll over ? 
-  key_state ^= i;                       // then toggle debounced state 
+  button_state ^= i;                       // then toggle debounced state 
                                         // now debouncing finished 
-  key_press |= key_state & i;           // 0->1: key press detect 
+  button_press |= button_state & i;           // 0->1: button press detect 
 }
 
-char get_key_press( char key_mask ) 
+char get_button_press( char button_mask ) 
 { 
   cli(); 
-  key_mask &= key_press;                // read key(s) 
-  key_press ^= key_mask;                // clear key(s) 
+  button_mask &= button_press;                // read button(s) 
+  button_press ^= button_mask;                // clear button(s) 
   sei(); 
-  return key_mask; 
+  return button_mask; 
 } 
 
 int main(void)
@@ -89,22 +115,22 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 // Initialize LEDs
 //////////////////////////////////////////////////////////////////////////
-  DDRC = 7;           /* make the LED pin an output */
-  PORTC= 0; 
+  LED_PORT_DIRECTION = LED_MASK;           /* make the LED pin an output */
+  LED_PORT = 0; 
 
   // initialize Timer1
   TCCR1A = 0;        // set entire TCCR1A register to 0
   TCCR1B = 0;
 
 
-  // set compare match register to desired timer count:
-  OCR1A = 65;
-
   // enable timer compare interrupt:
   TIMSK1 |= (1 << OCIE1A);
   
-  // turn on CTC mode:
+  // turn on CTC (Clear Timer on Compare) mode:
   TCCR1B |= (1 << WGM12);
+
+  // set compare match register to desired timer count:
+  OCR1A = 65;
   
   // Full clock speed (no prescaling)
   TCCR1B |= (1 << CS10);
@@ -113,14 +139,15 @@ int main(void)
 // Initialize Buttons
 //////////////////////////////////////////////////////////////////////////
 
-  key_state = 0; 
-  key_press = 0; 
+  button_state = 0; 
+  button_press = 0; 
+  
   // initialize timer0
-  TCCR0A = (1<<CS02);          //divide by 256
-  TIMSK0 = 1<<TOIE0;                      //enable timer overflow interrupt 
+  TCCR0A = (1<<CS02);          // divide by 256
+  TIMSK0 = 1<<TOIE0;           // enable timer overflow interrupt 
 
-  DDRD = 0;   // all inputs for now
-  PORTD = 0xff;  // enablel pullups
+  BUTTON_PORT_DIRECTION = 0;   // all inputs for now
+  BUTTON_PORT = BUTTON_MASK;   // enable pullups on the buttons
   
   // enable global interrupts:
   sei();
@@ -130,7 +157,8 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 
   for(;;){
-    uint8_t buttons = get_key_press(0x07);   // read the lowest three bits
+  
+    uint8_t buttons = get_button_press(BUTTON_MASK);   // read the lowest three bits
     
     if (buttons & MAIN_BUTTON) {
       if (red==0)
@@ -164,16 +192,20 @@ int main(void)
         blue = (blue << 1) + 1;
       }
     }
-
-/*        
-      red--;
-      red--;
-      red--;
-      green--;
-      green--;
-      blue--;
-*/
+    
+    if (buttons & SETUP_BUTTON) {
+      if (blue != 0) {
+        blue = 0;
+        red = 0;
+        green = 0;        
+      } else {
+        blue = 0xff;
+        red = 0xff;
+        green = 0xff;
+      }
     }
 
-    return 0;               /* never reached */
+  }
+
+  return 0;               /* never reached */
 }

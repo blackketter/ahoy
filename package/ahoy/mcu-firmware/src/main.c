@@ -155,53 +155,68 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 // Main loop
 //////////////////////////////////////////////////////////////////////////
-
+  uint8_t manualmode = 0;
+  uint8_t slowtimer = 0;
+  int8_t direction = 1;
+  
   for(;;){
   
     uint8_t buttons = get_button_press(BUTTON_MASK);   // read the lowest three bits
-    
-    if (buttons & MAIN_BUTTON) {
-      if (red==0)
-      { 
-        red = 1; 
-       } else if (red == 0xff) {
-        red = 0;
-     } else {
-        red = (red << 1) + 1;
-      }
-    }
-    
-    if (buttons & UP_BUTTON) {
-      if (green==0)
-      { 
-        green = 1; 
-      } else if (green == 0xff) {
-        green = 0;
-      } else {
-        green = (green << 1) + 1;
-      }
-    }
-    
-    if (buttons & DOWN_BUTTON) {
-      if (blue==0)
-      { 
-        blue = 1; 
-      } else if (blue == 0xff) {
-        blue = 0;
-      } else {
-        blue = (blue << 1) + 1;
-      }
-    }
+        
     
     if (buttons & SETUP_BUTTON) {
-      if (blue != 0) {
+      
+      manualmode = !manualmode;
+      
+      if (manualmode) {
         blue = 0;
         red = 0;
         green = 0;        
-      } else {
-        blue = 0xff;
-        red = 0xff;
-        green = 0xff;
+      }
+    }
+    
+    if (manualmode) {
+      if (buttons & MAIN_BUTTON) {
+        if (red==0)
+        { 
+          red = 1; 
+         } else if (red == 0xff) {
+          red = 0;
+       } else {
+          red = (red << 1) + 1;
+        }
+      }
+    
+      if (buttons & UP_BUTTON) {
+        if (green==0)
+        { 
+          green = 1; 
+        } else if (green == 0xff) {
+          green = 0;
+        } else {
+          green = (green << 1) + 1;
+        }
+      }
+    
+      if (buttons & DOWN_BUTTON) {
+        if (blue==0)
+        { 
+          blue = 1; 
+        } else if (blue == 0xff) {
+          blue = 0;
+        } else {
+          blue = (blue << 1) + 1;
+        }
+      }
+    } else { 
+      slowtimer++;
+      if (slowtimer == 0) {
+        red += direction;
+        green += direction;
+        blue += direction;
+        if (red == 0 || red == 0xff) {
+          direction = -direction;
+        }
       }
     }
 

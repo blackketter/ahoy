@@ -7,6 +7,8 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
+#include "spi.h"
+
 #if 0
 // fuse information is not propagated to the hex file, so the correct fuse
 // settings are passed via the command line to avrdude, see "upgrade" script
@@ -108,6 +110,18 @@ char get_button_press( char button_mask )
   return button_mask; 
 } 
 
+//////////////////////////////////////////////////////////////////////////
+// SPI Interrupt service routine
+//////////////////////////////////////////////////////////////////////////
+ISR(SPI_STC_vect)
+{
+ red = received_from_spi(0xaa);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// MAIN
+//////////////////////////////////////////////////////////////////////////
+
 int main(void)
 {
   cli();             // disable global interrupts
@@ -148,6 +162,16 @@ int main(void)
 
   BUTTON_PORT_DIRECTION = 0;   // all inputs for now
   BUTTON_PORT = BUTTON_MASK;   // enable pullups on the buttons
+
+
+//////////////////////////////////////////////////////////////////////////
+// Initialize SPI
+//////////////////////////////////////////////////////////////////////////
+  setup_spi(SPI_MODE_0, SPI_MSB, SPI_INTERRUPT, SPI_SLAVE);
+  
+//////////////////////////////////////////////////////////////////////////
+// End Initialization
+//////////////////////////////////////////////////////////////////////////
   
   // enable global interrupts:
   sei();
@@ -155,7 +179,7 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 // Main loop
 //////////////////////////////////////////////////////////////////////////
-  uint8_t manualmode = 0;
+  uint8_t animate = 1;
   uint8_t slowtimer = 0;
   int8_t direction = 1;
   
@@ -165,17 +189,20 @@ int main(void)
         
     
     if (buttons & SETUP_BUTTON) {
-      
-      manualmode = !manualmode;
-      
-      if (manualmode) {
-        blue = 0;
-        red = 0;
-        green = 0;        
-      }
+        animate = !animate;
     }
     
-    if (manualmode) {
+    if (animate) {
+      slowtimer++;
+      if (slowtimer == 0) {
+        red += direction;
+        green += direction;
+        blue += direction;
+        if (red == 0 || red == 0xff) {
+          direction = -direction;
+        }
+      }
+    } else {
       if (buttons & MAIN_BUTTON) {
         if (red==0)
         { 
@@ -207,17 +234,7 @@ int main(void)
         } else {
           blue = (blue << 1) + 1;
         }
-      }
-    } else { 
-      slowtimer++;
-      if (slowtimer == 0) {
-        red += direction;
-        green += direction;
-        blue += direction;
-        if (red == 0 || red == 0xff) {
-          direction = -direction;
-        }
-      }
+      }   
     }
 
   }

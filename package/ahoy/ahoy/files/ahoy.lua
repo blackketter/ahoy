@@ -7,6 +7,7 @@ local codec = require "codec"
 local leds = require "leds"
 local buttons = require "buttons"
 local opus = require "opus"
+local spi = require "spi"
 
 local two_seconds = 2*44100*4
 
@@ -16,13 +17,16 @@ function sleep(sec)
     socket.select(nil, nil, sec)
 end
 
-local main_button = 12  -- on gpio 12
-local setup_button = 11 -- on gpio 11
-
 -- print("Init codec")
 codec.init()
-leds.init()
-buttons.init(main_button,setup_button)  -- get ready to read buttons on specified GPIOs
+
+spi.open("/dev/spidev1.0")
+
+leds.init(spi)
+buttons.init(spi)
+
+-- fade to white while booting
+leds.set(1,1,1,1.0)
 
   -- hack to reset audio input
   audio.open(16, 44100, "r")
@@ -36,16 +40,13 @@ buttons.init(main_button,setup_button)  -- get ready to read buttons on specifie
 local hailfile = assert(io.open("/ahoy/sounds/hail.wav", "r"))
 local audiodata = hailfile:read("*a");
 
--- white while booting
-leds.set(1,1,1)
 audio.open(16, 44100, "w")
 audio.write(audiodata)
 audio.close()
 
 -- flicker green button while we're waiting (and spinning and killing the cpu)
-while (not buttons.state(main_button)) do
+while (not buttons.state("main")) do
   leds.set(0,1,0)
-  leds.set(0,0,0)
 end
 
 local audiodata = ''
@@ -54,14 +55,14 @@ local audiodata = ''
 for i=0,math.huge do
 
   -- if we're starting a recording, reset the data and turn on the red light
-  if (buttons.state(main_button)) then
+  if (buttons.state("main")) then
   
     leds.set(1,0,0)
     audiodata = ''
 
     audio.open(16, 44100, "r")
   
-    while (buttons.state(main_button) and #audiodata < two_seconds) do
+    while (buttons.state("main") and #audiodata < two_seconds) do
        audiodata = audiodata .. audio.read(768)
     end  
 
@@ -69,7 +70,7 @@ for i=0,math.huge do
   end
   
   -- if we are still holding down the button (i.e. maximum recording), wait until it's released
-  while (buttons.state(main_button)) do
+  while (buttons.state("main")) do
     leds.set(0,1,0)
   end
 
@@ -78,7 +79,7 @@ for i=0,math.huge do
 
   audio.open(16, 44100, "w")
   
-  while (not buttons.state(main_button)) do
+  while (not buttons.state("main")) do
     print("starting playback " .. i )
     audio.write(audiodata)
   end  

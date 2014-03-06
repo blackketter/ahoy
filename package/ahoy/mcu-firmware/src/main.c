@@ -68,7 +68,14 @@ volatile uint8_t blue = INIT_BLUE;
 //////////////////////////////////////////////////////////////////////////
 
 /*
-commands:
+
+Each SPI byte sent back to host includes the current button status in the low 4 bits
+
+Colors are on a quasi logarithmic curves. 
+Time is roughly 30 ticks per second
+Slew rate is in color units per tick
+
+Commands:
 
 0x00 - nop
 0x83   0xRR 0xGG 0xBB  - set color
@@ -321,19 +328,19 @@ void runColor(void) {
 //////////////////////////////////////////////////////////////////////////////
 void runLocal(void) {
 
-  commands[nextCommand].bytes[0] = 0x00; //r
-  commands[nextCommand].bytes[1] = 0x00; //g
-  commands[nextCommand].bytes[2] = 0x00; //b
+  commands[nextCommand].bytes[0] = 0x80; //r
+  commands[nextCommand].bytes[1] = 0x80; //g
+  commands[nextCommand].bytes[2] = 0x80; //b
   
-  commands[nextCommand].bytes[3] = 0x08; //slew
-  commands[nextCommand].bytes[4] = 0xff; //time
+  commands[nextCommand].bytes[3] = 0x01; //slew
+  commands[nextCommand].bytes[4] = 0x80; //time
   
-  commands[nextCommand].bytes[5] = 0xff; //r
-  commands[nextCommand].bytes[6] = 0xff; //g
-  commands[nextCommand].bytes[7] = 0xff; //b
+  commands[nextCommand].bytes[5] = 0x00; //r
+  commands[nextCommand].bytes[6] = 0x00; //g
+  commands[nextCommand].bytes[7] = 0x00; //b
   
-  commands[nextCommand].bytes[8] = 0x08; //slew
-  commands[nextCommand].bytes[9] = 0x20; //time
+  commands[nextCommand].bytes[8] = 0x01; //slew
+  commands[nextCommand].bytes[9] = 0x80; //time
   
   newCommandReady = 1;
   
@@ -467,7 +474,7 @@ int main(void)
   
   for(;;){
     // iterate the color animation, waiting for the tick counter
-    while (ticks < 4) {};    
+    while (ticks < 3) {};    
     ticks = 0;
 
     runColor();

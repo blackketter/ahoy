@@ -5,6 +5,7 @@
 //
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
 #include <util/delay.h>
 #include "stdlib.h"
 #include "spi.h"
@@ -40,7 +41,7 @@ volatile char button_state;                         // debounced and inverted bu
                                                     // bit = 1: button pressed 
 volatile char button_press;                         // button press detect 
 
-volatile uint8_t ticks = 0;  // increases every button test, approx 120Hz.
+volatile uint8_t colorTicks = 0;  // increases every button test, approx 120Hz.
 
 ///////////////////////////////////////////////////////////////////////////////
 // LED related defines and globals
@@ -52,8 +53,15 @@ volatile uint8_t ticks = 0;  // increases every button test, approx 120Hz.
 #define RED_LED (1)
 #define GREEN_LED (2)
 #define BLUE_LED (4)
+
+// these are also on the LED port
+#define CODEC_RESET (0x40)
+#define SYS_RESET (0x80)
+
 #define LED_MASK (0x07)
 
+
+// Default brightnesses at boot time
 #define INIT_RED (0)
 #define INIT_GREEN (0)
 #define INIT_BLUE (0)
@@ -62,6 +70,7 @@ volatile uint8_t ticks = 0;  // increases every button test, approx 120Hz.
 volatile uint8_t red = INIT_RED;
 volatile uint8_t green = INIT_GREEN;
 volatile uint8_t blue = INIT_BLUE;
+
 
 //////////////////////////////////////////////////////////////////////////
 // Color commands
@@ -72,7 +81,7 @@ volatile uint8_t blue = INIT_BLUE;
 Each SPI byte sent back to host includes the current button status in the low 4 bits
 
 Colors are on a quasi logarithmic curves. 
-Time is roughly 30 ticks per second
+Time is roughly 43 ticks per second
 Slew rate is in color units per tick
 
 Commands:
@@ -145,7 +154,7 @@ ISR(TIMER0_OVF_vect)
   button_state ^= i;                       // then toggle debounced state 
                                         // now debouncing finished 
   button_press |= button_state & i;           // 0->1: button press detect 
-  ticks++;
+  colorTicks++;
 }
 
 char get_button_press( char button_mask ) 
@@ -202,6 +211,12 @@ ISR(SPI_STC_vect)
 //////////////////////////////////////////////////////////////////////////
 
 void runColor(void) {
+
+    // run every 3 ticks
+    if (colorTicks < 3)
+      return;
+          
+    colorTicks = 0;
 
   // keeping track of which phase of the color cycle we are in and how many ticks are left 
   static uint8_t cyclePhase = 0;
@@ -406,14 +421,50 @@ void runLocal(void) {
 #endif
 
 }
+//////////////////////////////////////////////////////////////////////////
+// checkReset
+//////////////////////////////////////////////////////////////////////////
+void checkReset(void) {
+
+  // only the SETUP and DOWN buttons are pressed
+  if ((button_state & BUTTON_MASK) == (SETUP_BUTTON + DOWN_BUTTON)) {
+    // flash white/black fast
+    commands[nextCommand].bytes[0] = 0xff; //r
+    commands[nextCommand].bytes[1] = 0xff; //g
+    commands[nextCommand].bytes[2] = 0xff; //b
+  
+    commands[nextCommand].bytes[3] = 0x00; //slew
+    commands[nextCommand].bytes[4] = 0x04; //time
+  
+    commands[nextCommand].bytes[5] = 0x00; //r
+    commands[nextCommand].bytes[6] = 0x00; //g
+    commands[nextCommand].bytes[7] = 0x00; //b
+  
+    commands[nextCommand].bytes[8] = 0x00; //slew
+    commands[nextCommand].bytes[9] = 0x04; //time
+  
+    newCommandReady = 1;
+
+    // pull down reset pins
+    LED_PORT_DIRECTION = LED_MASK | SYS_RESET | CODEC_RESET;
+    // the LED ISR will now write zeros to the reset pins, as a side effect
+    
+    // enable watchdog timer for one second
+    wdt_enable(WDTO_1S);
+    
+    // reboot this system after a second
+    while (1) {};
+  }
+}
 
 //////////////////////////////////////////////////////////////////////////
 // MAIN
 //////////////////////////////////////////////////////////////////////////
-
-
 int main(void)
 {
+  MCUSR = 0;
+  wdt_disable();
+  
   cli();             // disable global interrupts
 
 //////////////////////////////////////////////////////////////////////////
@@ -473,11 +524,12 @@ int main(void)
   runLocal();
   
   for(;;){
-    // iterate the color animation, waiting for the tick counter
-    while (ticks < 3) {};    
-    ticks = 0;
-
+    // iterate the color animation
     runColor();
+    
+    // check to see if the magic button combination is set to reset the host
+    checkReset();
+    
   }
   
   return 0;               /* never reached */

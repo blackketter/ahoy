@@ -4,5 +4,5 @@ echo 12 > /sys/class/gpio/unexport
 echo 13 > /sys/class/gpio/unexport
 echo 14 > /sys/class/gpio/unexport
 echo 15 > /sys/class/gpio/unexport
-avrdude  -v -c linuxgpio -p t48 -s -C avrdude.conf -U flash:w:main.hex:i -U lfuse:w:0xee:m -U hfuse:w:0xdf:m -U efuse:w:0x01:m
+avrdude -q -p t48 -s -C /ahoy/mcu/avrdude.conf -U flash:w:main.hex:i -U lfuse:w:0xee:m -U hfuse:w:0xdf:m -U efuse:w:0x01:m
 insmod spi-gpio-custom bus0=1,15,14,12,0,10000,16

@@ -25,13 +25,13 @@ spi.open("/dev/spidev1.0")
 leds.init(spi)
 buttons.init(spi)
 
--- fade to white while booting
+-- fade to white while starting up
 leds.set(1,1,1,1.0)
 
-  -- hack to reset audio input
-  audio.open(16, 44100, "r")
-  audio.read(768)
-  audio.close()
+-- hack to reset audio input
+audio.open(16, 44100, "r")
+audio.read(768)
+audio.close()
   
 --audio.pause()
 --audio.resume()
@@ -44,9 +44,9 @@ audio.open(16, 44100, "w")
 audio.write(audiodata)
 audio.close()
 
--- flicker green button while we're waiting (and spinning and killing the cpu)
+-- green button while we're waiting (and spinning and killing the cpu)
 while (not buttons.state("main")) do
-  leds.set(0,1,0)
+  leds.set(0,1,0,0.5)
 end
 
 local audiodata = ''
@@ -80,8 +80,13 @@ for i=0,math.huge do
   audio.open(16, 44100, "w")
   
   while (not buttons.state("main")) do
+
     print("starting playback " .. i )
+
+    leds.animate({red=1,blue=1,green=1,time=0.1},{red=0,green=0,blue=1})
+    
     audio.write(audiodata)
+
   end  
   
   audio.close()

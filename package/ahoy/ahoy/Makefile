@@ -56,8 +56,8 @@ define Package/ahoy/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/audio.so $(1)/usr/lib/lua
 
-#	$(INSTALL_DIR) $(1)/etc/init.d
-#	$(INSTALL_BIN) ./files/ahoy.init $(1)/etc/init.d/ahoy
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/ahoy.init $(1)/etc/init.d/ahoy
 
 endef
 

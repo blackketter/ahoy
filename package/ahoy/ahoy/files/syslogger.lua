@@ -14,7 +14,7 @@ error =  function(txt, level)
 	else
 		msg = string.format("[%s]:%d ", info.short_src, info.currentline)
 	end
-	nixio.syslog("LOG_ERR", msg .. (txt or ""))
+	nixio.syslog("err", msg .. (txt or ""))
 	_error(txt, level)
 end
 

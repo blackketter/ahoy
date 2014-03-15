@@ -36,8 +36,8 @@
 #define AHOY_GPIO_BTN_VOLUMEUP			5
 #define AHOY_GPIO_BTN_VOLUMEDOWN		2
 
-#define CARAMBOLA2_GPIO_BTN_JUMPSTART		11
-#define CARAMBOLA2_GPIO_BTN_RESET		12
+/* #define CARAMBOLA2_GPIO_BTN_JUMPSTART		11 */
+#define CARAMBOLA2_GPIO_BTN_RESET		11
 
 #define CARAMBOLA2_KEYS_POLL_INTERVAL		20	/* msecs */
 #define CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL	(3 * CARAMBOLA2_KEYS_POLL_INTERVAL)
@@ -116,7 +116,7 @@ static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
                 .gpio           = AHOY_GPIO_BTN_VOLUMEDOWN,
                 .active_low     = 1,
         },
-
+#if 0
 	{
 		.desc		= "jumpstart button",
 		.type		= EV_KEY,
@@ -125,6 +125,7 @@ static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
 		.gpio		= CARAMBOLA2_GPIO_BTN_JUMPSTART,
 		.active_low	= 1,
 	},
+#endif
 
 	{
 		.desc		= "reset button",

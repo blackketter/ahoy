@@ -17,12 +17,11 @@ function sleep(sec)
 end
 
 local main_button = 12  -- on gpio 12
-local setup_button = 11 -- on gpio 11
 
 -- print("Init codec")
 codec.init()
 leds.init()
-buttons.init(main_button,setup_button)  -- get ready to read buttons on specified GPIOs
+buttons.init(main_button)  -- get ready to read buttons on specified GPIOs
 
   -- hack to reset audio input
   audio.open(16, 44100, "r")

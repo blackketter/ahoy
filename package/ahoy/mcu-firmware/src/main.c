@@ -50,9 +50,9 @@ volatile uint8_t colorTicks = 0;  // increases every button test, approx 120Hz.
 #define LED_PORT            PORTD
 #define LED_PORT_DIRECTION  DDRD
 
-#define RED_LED (1)
+#define RED_LED (4)
 #define GREEN_LED (2)
-#define BLUE_LED (4)
+#define BLUE_LED (1)
 
 // these are also on the LED port
 #define CODEC_RESET (0x40)

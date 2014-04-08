@@ -1,5 +1,5 @@
 #!/bin/bash
 make
-scp main.hex root@ahoy3.local:/ahoy/mcu/ 
-ssh root@ahoy3.local "cd /ahoy/mcu;./upgrade"
+scp main.hex root@ahoy4.local:/ahoy/mcu/ 
+ssh root@ahoy4.local "cd /ahoy/mcu;./upgrade"
 

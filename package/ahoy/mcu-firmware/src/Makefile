@@ -20,13 +20,13 @@
 DEVICE     = attiny48
 CLOCK      = 8000000
 PROGRAMMER = -c avrisp -P /dev/cu.usbmodem1d1111
-OBJECTS    = main.o
+OBJECTS    = main.o spi.o
 #FUSES      = -U lfuse:w:0xee:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
-COMPILE = avr-gcc -Wall -Werror -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
+COMPILE = avr-gcc -I. -Wall -Werror -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
 
 # symbolic targets:
 all:	main.hex

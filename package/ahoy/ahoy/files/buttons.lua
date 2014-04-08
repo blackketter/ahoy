@@ -1,31 +1,25 @@
 local buttons = {}
+local spi
+local buttonbits = { main=0, volup=1, voldown=2, setup=3 }
+local null = string.char(0)
+local laststate
 
 --------------------------------------------------------------------------------
-function buttons.init(...)
-  buttons.fds = {}
-  for i,v in ipairs{...} do
-    local tempfd = assert(io.open("/sys/class/gpio/export", "w"))
-    tempfd:write(v)
-    tempfd:close()
-    
-    tempfd = assert(io.open("/sys/class/gpio/gpio" .. v .. "/direction", "w"))
-    tempfd:write("in")
-    tempfd:close()
-   	
-    tempfd = assert(io.open("/sys/class/gpio/gpio" .. v .. "/active_low", "w"))
-    tempfd:write("1")
-    tempfd:close()
-         
-    buttons.fds[v] = assert(io.open("/sys/class/gpio/gpio" .. v .. "/value", "r"))
-  end
+function buttons.init(spiport)
+  spi = spiport;
 end
 
+function buttons.laststate(id)
+  local buttonvalue = math.floor(laststate / 2 ^ buttonbits[id]) % 2  -- shift down by the bit number, then mod 2 to get the single bit value
+  
+  return buttonvalue == 1  -- result is a boolean, not a number
+end
+ 
 function buttons.state(id)
-  local state
-  buttons.fds[id]:seek("set")
-  state = assert(buttons.fds[id]:read(1))
---  print("Button " .. id .. " is " .. state)
-  return tonumber(state) == 1
+
+  laststate = string.byte(spi.rw(null,1)) -- get the button state byte
+  
+  return buttons.laststate(id)
 end
 --------------------------------------------------------------------------------
 -- end of module

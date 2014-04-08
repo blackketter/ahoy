@@ -52,6 +52,8 @@ define Package/ahoy/install
 
 	$(INSTALL_DIR) $(1)/ahoy/sounds
 	$(INSTALL_DATA) ./files/sounds/hail.wav $(1)/ahoy/sounds/hail.wav
+	$(INSTALL_DATA) ./files/sounds/1k.wav $(1)/ahoy/sounds/1k.wav
+	$(INSTALL_DATA) ./files/sounds/whistle.wav $(1)/ahoy/sounds/whistle.wav
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/audio.so $(1)/usr/lib/lua

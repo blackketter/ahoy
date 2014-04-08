@@ -21,23 +21,13 @@
 #include "machtypes.h"
 #include "linux/i2c-gpio.h"
 #include "linux/platform_device.h"
+#include "linux/gpio.h"
 
 #define CARAMBOLA2_GPIO_LED_WLAN		0
 #define CARAMBOLA2_GPIO_LED_ETH0		14
 #define CARAMBOLA2_GPIO_LED_ETH1		13
 
-#define AHOY_GPIO_LED_RED			13
-#define AHOY_GPIO_LED_GREEN			14
-#define AHOY_GPIO_LED_BLUE			15
-#define AHOY_GPIO_LED_WHITE			16
-
-#define AHOY_GPIO_BTN_SETUP			4
-#define AHOY_GPIO_BTN_GO			3
-#define AHOY_GPIO_BTN_VOLUMEUP			5
-#define AHOY_GPIO_BTN_VOLUMEDOWN		2
-
-/* #define CARAMBOLA2_GPIO_BTN_JUMPSTART		11 */
-#define CARAMBOLA2_GPIO_BTN_RESET		11
+#define CARAMBOLA2_GPIO_BTN_JUMPSTART		11
 
 #define CARAMBOLA2_KEYS_POLL_INTERVAL		20	/* msecs */
 #define CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL	(3 * CARAMBOLA2_KEYS_POLL_INTERVAL)
@@ -63,76 +53,16 @@ static struct gpio_led carambola2_leds_gpio[] __initdata = {
 		.active_low	= 0,
 	}
 */
-	{
-		.name		= "ahoy:red:red",
-		.gpio		= AHOY_GPIO_LED_RED,
-		.active_low	= 1,
-	}, {
-		.name		= "ahoy:green:green",
-		.gpio		= AHOY_GPIO_LED_GREEN,
-		.active_low	= 0,
-	}, {
-		.name		= "ahoy:blue:blue",
-		.gpio		= AHOY_GPIO_LED_BLUE,
-		.active_low	= 0,
-	}, {
-		.name		= "ahoy:white:white",
-		.gpio		= AHOY_GPIO_LED_WHITE,
-		.active_low	= 1,
-	}
 };
 
 static struct gpio_keys_button carambola2_gpio_keys[] __initdata = {
 
-	{
-		.desc		= "setup button",
-		.type		= EV_KEY,
-		.code		= KEY_SETUP,
-		.debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
-		.gpio		= AHOY_GPIO_BTN_SETUP,
-		.active_low	= 1,
-	},
-	{
-		.desc           = "main button",
-                .type           = EV_KEY,
-                .code           = KEY_OK,
-                .debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
-                .gpio           = AHOY_GPIO_BTN_GO,
-                .active_low     = 1,
-	},
-        {
-                .desc           = "volume up button",
-                .type           = EV_KEY,
-                .code           = KEY_VOLUMEUP,
-                .debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
-                .gpio           = AHOY_GPIO_BTN_VOLUMEUP,
-                .active_low     = 1,
-        },
-        {
-                .desc           = "volume down button",
-                .type           = EV_KEY,
-                .code           = KEY_VOLUMEDOWN,
-                .debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
-                .gpio           = AHOY_GPIO_BTN_VOLUMEDOWN,
-                .active_low     = 1,
-        },
-#if 0
 	{
 		.desc		= "jumpstart button",
 		.type		= EV_KEY,
 		.code		= KEY_WPS_BUTTON,
 		.debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= CARAMBOLA2_GPIO_BTN_JUMPSTART,
-		.active_low	= 1,
-	},
-#endif
-
-	{
-		.desc		= "reset button",
-		.type		= EV_KEY,
-		.code		= KEY_RESTART,
-		.debounce_interval = CARAMBOLA2_KEYS_DEBOUNCE_INTERVAL,
-		.gpio		= CARAMBOLA2_GPIO_BTN_RESET,
 		.active_low	= 1,
 	}
 };
@@ -185,14 +115,19 @@ static void __init carambola2_setup(void)
 				AR724X_GPIO_FUNC_ETH_SWITCH_LED2_EN |
 				AR724X_GPIO_FUNC_ETH_SWITCH_LED3_EN |
 				AR724X_GPIO_FUNC_ETH_SWITCH_LED4_EN);
-
-    platform_add_devices(carambola2_devices, ARRAY_SIZE(carambola2_devices));
+	
+	platform_add_devices(carambola2_devices, ARRAY_SIZE(carambola2_devices));
 
 	ath79_register_leds_gpio(-1, ARRAY_SIZE(carambola2_leds_gpio),
 				 carambola2_leds_gpio);
 	ath79_register_gpio_keys_polled(-1, CARAMBOLA2_KEYS_POLL_INTERVAL,
 					ARRAY_SIZE(carambola2_gpio_keys),
 					carambola2_gpio_keys);
+	
+	// AVR MCU Reset# line
+	gpio_request_one(13, GPIOF_OUT_INIT_HIGH | GPIOF_EXPORT_DIR_CHANGEABLE, "MCU reset");
+	gpio_free(13);
+
 	ath79_register_usb();
 }
 

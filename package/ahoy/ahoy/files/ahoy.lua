@@ -13,6 +13,8 @@ local frame_size = 768
 local frame_time = (768/(44100*4))
 local max_time = 60 / frame_time
 local min_time = 1 / frame_time 
+local lastdelta = 0
+local debug_print = false
 
 require "socket"
 ------------------------------------------------------------------------------
@@ -21,6 +23,17 @@ require "socket"
 function sleep(sec)
     socket.select(nil, nil, sec)
 end
+
+function debug(...) 
+  if (debug_print) then
+    if (lastdelta == 0) then
+    	lastdelta = socket.gettime()
+    end
+     
+    print( socket.gettime()-lastdelta .. ":", ...)
+  end
+end
+    
 
 ------------------------------------------------------------------------------
 function playWav(name)
@@ -33,7 +46,7 @@ function playWav(name)
   local wav = wavfile:read("*a");
   
   local modulo = #wav % frame_size
-
+  
   -- pad to 768 bytes
   if (modulo > 0) then
     wav = wav .. string.rep (string.char(0), frame_size - modulo)
@@ -42,10 +55,6 @@ function playWav(name)
   audio.open(16, 44100, "w")
   audio.write(wav)
   audio.close()
-
--- this keeps the read side from getting out of alignment.  uck.
- audio.open(16, 44100, "w")
- audio.close()
 
 end
 
@@ -63,7 +72,12 @@ buttons.init(spi)
 
 -- fade to white while starting up
 leds.set(1,1,1,1.0)
-  
+
+-- hack to reset audio input
+audio.open(16, 44100, "r")
+audio.read(768)
+audio.close()
+     
 playWav("whistle")
 
 -- green button while we're waiting (and spinning and killing the cpu)
@@ -77,29 +91,30 @@ for i=0,math.huge do
 
   -- if we're starting a recording, reset the data and turn on the red light
   if (buttons.state("main")) then  
-
+    debug("starting")
     -- red light means recording    
-   leds.animate({red=0,blue=1,green=1,time=1.25},{red=1,green=0,blue=0})
-   
-    -- whistle sound
-    playWav("whistle")
+    leds.set(1,0,0,0.5)
 
-    if (buttons.state("main")) then
-      audio.open(16, 44100, "r")
-      local recfile = assert(io.open("/tmp/recording", "w"))
-  
-      while (buttons.state("main")) do
-        local audioframe  = audio.read(frame_size)
-        audiodata[#audiodata+1] = audioframe
-        if (audioframe) then
-          recfile:write(audioframe)
-        end
-      end  
+    debug("opening")   
+    audio.open(16, 44100, "r")
     
-      audio.close()
-      assert(recfile:close())
-
-    end
+    debug("open tmp")
+    local recfile = assert(io.open("/tmp/recording", "w"))
+  
+    debug("starting while")
+    while (buttons.state("main")) do
+      debug("reading audio")
+      local audioframe  = audio.read(frame_size)
+      audiodata[#audiodata+1] = audioframe
+      if (audioframe) then
+        recfile:write(audioframe)
+      end
+    end  
+    debug("endwhile")
+    audio.pause() 
+    audio.close()
+    debug("closing tmp")
+    assert(recfile:close())
     
     -- remove the last 23 frames (.1 seconds)
     local i
@@ -109,14 +124,17 @@ for i=0,math.huge do
       end
     end
 
+    if (#audiodata == 0) then      
+      debug("animating")
+      leds.animate({red=0,green=1,blue=1,time=.7},{red=0,green=1,blue=0})                                                              
+      debug("whistling")
+      playWav("whistle")                                                                       
+    end                                                                                          
+    
     -- if we are still holding down the button (i.e. maximum recording), wait until it's released
     while (buttons.state("main")) do                                                             
       leds.set(0,1,0)                                                                            
     end  
-    
-    -- fade to green again
-    leds.set(0,1,0,0.5)
-       
   end
 
   -- test tone mode

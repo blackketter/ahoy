@@ -141,7 +141,7 @@ LUALIB_API int spi_read(lua_State *L){
     luaL_error(L,"ioctl failed, return %d", strerror(status));
 
   lua_pushlstring(L,rdata, rlen);
-
+  free(rdata);
   return 1;
    
 }
@@ -177,6 +177,7 @@ LUALIB_API int spi_rw(lua_State *L){
     luaL_error(L,"ioctl failed, return %d", strerror(status));
 
   lua_pushlstring(L, rdata, rlen);
+  free(rdata);
 
   return 1;
 }

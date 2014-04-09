@@ -1,6 +1,8 @@
 #!/usr/bin/lua
 require "strict"
 require "syslogger"
+require "socket"
+require "utils"
 
 local audio = require "audio"
 local codec = require "codec"
@@ -15,55 +17,69 @@ local frames_per_second = 1/frame_time
 local max_time = 60 / frame_time
 local min_time = 1 / frame_time 
 local lastdelta = 0
-local debug_print = false
 
-require "socket"
 ------------------------------------------------------------------------------
 -- FUNCTIONS
 ------------------------------------------------------------------------------
-function sleep(sec)
-    socket.select(nil, nil, sec)
-end
+local lastVolumeUpdate = 0
+local minVol = -40
+local maxVol = 0
+local volSteps = 11
+local volStep = (maxVol - minVol)/volSteps
 
-function debug(...) 
-  if (debug_print) then
-    if (lastdelta == 0) then
-    	lastdelta = socket.gettime()
+function checkVolume()
+  local updated = false
+  local newVol
+  local oldVol
+  local now = now()
+  
+  -- ignore if both pressed or both not pressed
+  if (buttons.laststate('voldown') == buttons.laststate('volup')) then
+    return
+  end
+  
+  -- only update after a wait, releasing both resets this timeout
+  if (now - lastVolumeUpdate > 0.2) then
+    oldVol = codec.volume()
+
+    if (buttons.laststate('voldown')) then
+      newVol = oldVol - volStep 
+  
+      if (newVol < minVol) then
+        newVol = minVol
+      end
+  
+      updated = true
     end
-     
-    print( socket.gettime()-lastdelta .. ":", ...)
-  end
-end
+  
+    if (buttons.laststate('volup')) then
+      newVol = oldVol + volStep 
     
-
-------------------------------------------------------------------------------
-function playWav(name)
-
-  if (string.sub(name, 1, 1) ~= "/") then
-    name = "/ahoy/sounds/" .. name .. ".wav"
-  end
+      if (newVol > 0) then
+        newVol = 0
+      end
+    
+      updated = true
+    end
   
-  local wavfile = assert(io.open(name, "r"))
-  local wav = wavfile:read("*a");
-  
-  local modulo = #wav % frame_size
-  
-  -- pad to 768 bytes
-  if (modulo > 0) then
-    wav = wav .. string.rep (string.char(0), frame_size - modulo)
-  end
-  
-  audio.open(16, 44100, "w")
-  audio.write(wav)
-  audio.close()
-
+    if (updated) then
+      codec.volume(newVol)
+      
+      local brightness = (newVol - minVol) / (maxVol - minVol)    
+      
+      leds.animate({red=brightness,green=brightness,blue=brightness,time=.1},{red=0,green=0,blue=0})
+      if (not audio.isPlaying() and not audio.isRecording() ) then -- and oldVol ~= newVol) then
+        audio.playWav("vol")
+      end
+      lastVolumeUpdate = now
+    end  
+  end 
 end
 
 ------------------------------------------------------------------------------
 -- BEGIN EXECUTION
 ------------------------------------------------------------------------------
 
--- print("Init codec")
 codec.init()
 
 spi.open("/dev/spidev1.0")
@@ -74,12 +90,9 @@ buttons.init(spi)
 -- fade to white while starting up
 leds.set(1,1,1,1.0)
 
--- hack to reset audio input
-audio.open(16, 44100, "r")
-audio.read(768)
-audio.close()
+audio.init()
      
-playWav("whistle")
+audio.playWav("whistle")
 
 -- green button while we're waiting (and spinning and killing the cpu)
 leds.set(0,1,0,0.5)
@@ -90,14 +103,17 @@ local audiodata = {}
 -- main loop
 for i=0,math.huge do
 
+  -- check the volume
+  checkVolume()
+  
   -- if we're starting a recording, reset the data and turn on the red light
   if (buttons.state("main")) then  
     debug("starting")
     -- red light means recording    
     leds.set(1,0,0,0.5)
 
-    debug("opening")   
-    audio.open(16, 44100, "r")
+    debug("opening")
+    audio.record()
     
     debug("open tmp")
     local recfile = assert(io.open("/tmp/recording", "w"))
@@ -112,8 +128,7 @@ for i=0,math.huge do
       end
     end  
     debug("endwhile")
-    audio.pause() 
-    audio.close()
+    audio.stop()
     debug("closing tmp")
     assert(recfile:close())
     
@@ -129,7 +144,7 @@ for i=0,math.huge do
       debug("animating")
       leds.animate({red=0,green=1,blue=1,time=.7},{red=0,green=1,blue=0})                                                              
       debug("whistling")
-      playWav("whistle")                                                                       
+      audio.playWav("whistle")                                                                       
     end                                                                                          
     
     -- if we are still holding down the button (i.e. maximum recording), wait until it's released
@@ -156,16 +171,18 @@ for i=0,math.huge do
   end
   
   -- if we have audio data, then play it.
-  if (#audiodata > 0) then
+  if (#audiodata > frames_per_second) then
     -- playback is blue
     leds.set(0,0,1)
 
-    audio.open(16, 44100, "w")
-  
+    audio.play()
+      
     local index = 1
   
     while (not buttons.state("main")) do
   
+      checkVolume()
+      
       audio.write(audiodata[index])
     
       index = index + 1
@@ -178,21 +195,13 @@ for i=0,math.huge do
       end
       
       -- show some colors to show the buttons are working 
-      if (buttons.laststate("volup")) then
-        leds.animate({red=.5,blue=.5,green=0,time=0.1},{red=0,green=0,blue=1})
-      end
-  
-      if (buttons.laststate("voldown")) then
-        leds.animate({red=.5,blue=0,green=.5,time=0.1},{red=0,green=0,blue=1})
-      end
-  
       if (buttons.laststate("setup")) then
         leds.animate({red=0,blue=.5,green=.5,time=0.1},{red=0,green=0,blue=1})
       end
   
     end  
   
-    audio.close()
+    audio.stop()
     audiodata = {}
 
     -- fade to green again

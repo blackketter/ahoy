@@ -44,6 +44,7 @@ define Package/ahoy/install
 	$(INSTALL_DATA) ./files/leds.lua $(1)/ahoy/leds.lua
 	$(INSTALL_DATA) ./files/buttons.lua $(1)/ahoy/buttons.lua
 	$(INSTALL_DATA) ./files/utils.lua $(1)/ahoy/utils.lua
+	$(INSTALL_DATA) ./files/audio.lua $(1)/ahoy/audio.lua
 
 	$(INSTALL_DATA) ./files/strict.lua $(1)/ahoy/strict.lua
 	$(INSTALL_DATA) ./files/syslogger.lua $(1)/ahoy/syslogger.lua
@@ -54,9 +55,10 @@ define Package/ahoy/install
 	$(INSTALL_DATA) ./files/sounds/hail.wav $(1)/ahoy/sounds/hail.wav
 	$(INSTALL_DATA) ./files/sounds/1k.wav $(1)/ahoy/sounds/1k.wav
 	$(INSTALL_DATA) ./files/sounds/whistle.wav $(1)/ahoy/sounds/whistle.wav
+	$(INSTALL_DATA) ./files/sounds/vol.wav $(1)/ahoy/sounds/vol.wav
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/audio.so $(1)/usr/lib/lua
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/i2s.so $(1)/usr/lib/lua
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/ahoy.init $(1)/etc/init.d/ahoy

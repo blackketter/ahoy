@@ -9,10 +9,10 @@ CFLAGS= -O2 $(WARN) $(INCS) $(DEFS) -fPIC
 LIB_OPTION= -shared #for Linux
 #LIB_OPTION= -bundle -undefined dynamic_lookup #for MacOS X
 
-LIBNAME= audio.so
+LIBNAME= i2s.so
 
-OBJS= audio.o
-SRCS= audio.c
+OBJS= i2s.o
+SRCS= i2s.c
 AR= ar rcu
 RANLIB= ranlib
 
@@ -28,8 +28,8 @@ $(LIBNAME): $(OBJS)
 #~ $(CC) -c $(CFLAGS) -o $@ $(COMPAT_DIR)/compat-5.1.c
 
 #~ install:
-#~ mkdir -p $(LUA_LIBDIR)/audio
-#~ cp src/$(LIBNAME) $(LUA_LIBDIR)/audio
+#~ mkdir -p $(LUA_LIBDIR)/i2s
+#~ cp src/$(LIBNAME) $(LUA_LIBDIR)/i2s
 
 clean:
 	rm -f $(LIBNAME) *.o

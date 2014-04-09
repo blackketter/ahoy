@@ -10,6 +10,10 @@ function buttons.init(spiport)
 end
 
 function buttons.laststate(id)
+  if (not laststate) then
+    return buttons.state(id)
+  end
+  
   local buttonvalue = math.floor(laststate / 2 ^ buttonbits[id]) % 2  -- shift down by the bit number, then mod 2 to get the single bit value
   
   return buttonvalue == 1  -- result is a boolean, not a number
@@ -20,6 +24,10 @@ function buttons.state(id)
   laststate = string.byte(spi.rw(null,1)) -- get the button state byte
   
   return buttons.laststate(id)
+end
+
+function buttons.down(id)
+  print("fix buttons.down!")
 end
 --------------------------------------------------------------------------------
 -- end of module

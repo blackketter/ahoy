@@ -18,11 +18,16 @@ local max_time = 60 / frame_time
 local min_time = 1 / frame_time 
 local lastdelta = 0
 
+local default_color = {red=0.25,green=0.25,blue=0.25,fade=0.5}
+local playback_color = {red=0,green=0,blue=1}
+
 ------------------------------------------------------------------------------
--- FUNCTIONS
+-- VOLUME
 ------------------------------------------------------------------------------
+
 local lastVolumeUpdate = 0
 local minVol = -40
+local offVol = -120
 local maxVol = 0
 local volSteps = 11
 local volStep = (maxVol - minVol)/volSteps
@@ -46,7 +51,7 @@ function checkVolume()
       newVol = oldVol - volStep 
   
       if (newVol < minVol) then
-        newVol = minVol
+        newVol = offVol
       end
   
       updated = true
@@ -58,6 +63,10 @@ function checkVolume()
       if (newVol > 0) then
         newVol = 0
       end
+      
+      if (newVol <= minVol) then
+        newVol = minVol
+      end
     
       updated = true
     end
@@ -67,7 +76,11 @@ function checkVolume()
       
       local brightness = (newVol - minVol) / (maxVol - minVol)    
       
-      leds.animate({red=brightness,green=brightness,blue=brightness,time=.1},{red=0,green=0,blue=0})
+      if (brightness < 0) then
+        brightness = 0
+      end
+      
+      leds.animate({red=brightness,green=brightness,blue=brightness,time=.1},default_color)
       if (not audio.isPlaying() and not audio.isRecording() ) then -- and oldVol ~= newVol) then
         audio.playWav("vol")
       end
@@ -95,7 +108,7 @@ audio.init()
 audio.playWav("whistle")
 
 -- green button while we're waiting (and spinning and killing the cpu)
-leds.set(0,1,0,0.5)
+leds.set(default_color)
 
 local audiodata = {}
 
@@ -106,6 +119,11 @@ for i=0,math.huge do
   -- check the volume
   checkVolume()
   
+  -- show some colors to show the buttons are working 
+  if (buttons.laststate("setup")) then
+    leds.animate({red=0,blue=.5,green=.5,time=0.1},default_color)
+  end
+
   -- if we're starting a recording, reset the data and turn on the red light
   if (buttons.state("main")) then  
     debug("starting")
@@ -142,14 +160,14 @@ for i=0,math.huge do
 
     if (#audiodata < frames_per_second) then      
       debug("animating")
-      leds.animate({red=0,green=1,blue=1,time=.7},{red=0,green=1,blue=0})                                                              
+      leds.animate({red=0,green=1,blue=1,time=.7},default_color)                                                              
       debug("whistling")
       audio.playWav("whistle")                                                                       
     end                                                                                          
     
     -- if we are still holding down the button (i.e. maximum recording), wait until it's released
     while (buttons.state("main")) do                                                             
-      leds.set(0,1,0)                                                                            
+      leds.set(default_color)                                                                            
     end  
   end
 
@@ -191,21 +209,15 @@ for i=0,math.huge do
       -- start over and show a blink
       if (index > #audiodata) then 
         index = 1
-        leds.animate({red=1,blue=1,green=1,time=0.1},{red=0,green=0,blue=1})
+        leds.animate({red=1,blue=1,green=1,time=0.1},playback_color)
       end
-      
-      -- show some colors to show the buttons are working 
-      if (buttons.laststate("setup")) then
-        leds.animate({red=0,blue=.5,green=.5,time=0.1},{red=0,green=0,blue=1})
-      end
-  
+        
     end  
   
     audio.stop()
     audiodata = {}
 
-    -- fade to green again
-    leds.set(0,1,0,0.5)
+    leds.set(default_color)
     
   end
 

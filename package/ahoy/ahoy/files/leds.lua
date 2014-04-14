@@ -8,14 +8,21 @@ function leds.init(spiport)
 end
 
 --------------------------------------------------------------------------------
-function leds.set(red, green, blue, fadetime)
+function leds.set(red, green, blue, fade)
 
     -- construct a byte sequence to set the color
     local commandstring
     
-    if fadetime then 
-      -- if fadetime is specified, then fade in over up to that many seconds
-      commandstring = string.char(0x84, math.floor(red*255), math.floor(green*255), math.floor(blue*255), math.floor((255/fps)/fadetime))
+    if type(red) == "table" then
+      green = red.green
+      blue = red.blue
+      fade = red.fade
+      red = red.red
+    end
+    
+    if fade then 
+      -- if fade is specified, then fade in over up to that many seconds
+      commandstring = string.char(0x84, math.floor(red*255), math.floor(green*255), math.floor(blue*255), math.floor((255/fps)/fade))
     else 
       commandstring = string.char(0x83, math.floor(red*255), math.floor(green*255), math.floor(blue*255))
     end
@@ -34,7 +41,7 @@ function leds.animate(color1, color2)
         math.floor(color1.green*255), 
         math.floor(color1.blue*255), 
         color1.fade and math.floor(255/fps)/color1.fade or 0,
-        math.floor(fps*color1.time),
+        color1.time and math.floor(fps*color1.time) or 0,
         
         math.floor(color2.red*255), 
         math.floor(color2.green*255), 

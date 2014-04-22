@@ -250,6 +250,8 @@ LUALIB_API int opus_enc_new(lua_State *L){
 
   *enc = opus_encoder_create ( Fs,  channels,  app_int,  &error);
 
+  printf("created opus encoder: %x\n", (unsigned int)(*enc));
+  
   opus_check_error(L, error);
 
   return 1; 
@@ -300,10 +302,10 @@ int opus_enc_encode(lua_State *L)
 
 LUALIB_API int opus_enc_free(lua_State *L){
 
-  OpusEncoder* enc = luaL_checkudata(L, 1, "opus.encoder");
+  OpusEncoder** enc = luaL_checkudata(L, 1, "opus.encoder");
 
-  opus_encoder_destroy(enc);
-  
+  opus_encoder_destroy(*enc);
+
   return 0;
 }
 
@@ -719,9 +721,9 @@ LUALIB_API int opus_dec_decode(lua_State *L){
 
 LUALIB_API int opus_dec_free(lua_State *L){
 
-  OpusDecoder* dec = luaL_checkudata(L, 1, "opus.decoder");
+  OpusDecoder** dec = luaL_checkudata(L, 1, "opus.decoder");
 
-  opus_decoder_destroy (dec);
+  opus_decoder_destroy (*dec);
 
   return 0;
 }

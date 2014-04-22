@@ -16,6 +16,9 @@ dump( getmetatable(enc), "enc(metatable)");
 print()
 
 local sampledata = string.rep('1234',480)
+
+print('sampledata length', #sampledata)
+
 local sampleframe = enc:encode(sampledata)
 
 print('sampleframe = length', #sampleframe)

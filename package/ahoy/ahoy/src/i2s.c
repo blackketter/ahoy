@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
+#include <inttypes.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-# define I2S_FILE_KEY "i2s-file-key"
+#define I2S_FILE_KEY "i2s-file-key"
+static int gNumChannels = 0;
 
 LUALIB_API int i2s_write(lua_State *L);
 LUALIB_API int i2s_read(lua_State *L);
@@ -29,6 +31,7 @@ LUALIB_API int i2s_version(lua_State *L);
 
 // natural size for the AR9331 i2s driver
 #define READ_BUFFER_SIZE (NUM_DESC * I2S_BUF_SIZE)
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -55,7 +58,8 @@ LUALIB_API int i2s_open(lua_State *L){
     
     int sampleSize = lua_tointeger(L, 1);
     int sampleRate = lua_tointeger(L, 2);  
-    const char* mode = luaL_optstring(L,3,"w");
+    int sampleChannels = lua_tointeger(L, 3);
+    const char* mode = luaL_optstring(L, 4, "w");
     int modenum = O_WRONLY;
     
     int* i2sf = (int*)lua_newuserdata(L, sizeof(int));
@@ -86,6 +90,15 @@ LUALIB_API int i2s_open(lua_State *L){
     if (sampleRate == 0)
       sampleRate = 44100;
       
+    if (sampleChannels == 0) 
+      sampleChannels = 2;
+      
+    if (sampleChannels < 1 || sampleChannels > 2) {
+      luaL_error(L, "Not a valid number of channels: %d", sampleChannels);
+    }
+    
+    gNumChannels = sampleChannels;
+      
     if (sampleSize < 0 || ioctl(*i2sf, I2S_DSIZE, sampleSize) < 0) {
       luaL_error(L, "Failed to set I2S_DSIZE to %d: %s", sampleSize, strerror(errno));
     }
@@ -115,6 +128,8 @@ LUALIB_API int i2s_write(lua_State *L){
 	size_t  remainingBytes;
   size_t i2sDataLength;
 
+  uint16_t* stereoBuffer = NULL;
+  
   int i2sf = getI2SFile(L);
   
   i2sData = lua_tolstring(L, -1, &i2sDataLength);
@@ -123,6 +138,20 @@ LUALIB_API int i2s_write(lua_State *L){
     luaL_error(L, "No valid i2s data for write");
   }
 
+  // if we are getting mono data, we need to double it up
+  if (gNumChannels == 1) {
+    int numSamples = i2sDataLength / 2;  // 16-bit samples of one channel each
+
+    stereoBuffer = malloc(i2sDataLength*2);  // double the size, from one channel to two
+
+    int i;
+    for (i = 0; i < numSamples; i++) {
+        stereoBuffer[i*2] = stereoBuffer[i*2+1] = ((uint16_t*)i2sData)[i];
+    }
+    i2sDataLength = i2sDataLength*2;
+    i2sData = (const char*)stereoBuffer;
+  }
+  
 // keep trying to write out until we are out of data.
 eagain:                                                         
   remainingBytes = i2sDataLength;                                       
@@ -149,6 +178,9 @@ eagain:
       
   } while (remainingBytes);                                      
 
+  if (stereoBuffer)
+    free(stereoBuffer);
+        
 // djb: no result returned.  todo: non-blocking writes?  yield while blocked?
   return 0;
 }
@@ -166,6 +198,10 @@ LUALIB_API int i2s_read(lua_State *L){
 
   if (requestSize <= 0) {
     requestSize = READ_BUFFER_SIZE;
+  }
+  
+  if (gNumChannels == 1) {
+    requestSize = requestSize * 2;
   }
   
   // sometimes we read more than we ask for!
@@ -190,7 +226,18 @@ eagain:
     }
 
     if (readResult > 0) {
-      luaL_addlstring (&b, readBuf, readResult);
+      // the hardware gives us stereo always
+      int numSamples = readResult/4;
+      
+      // we'll go through each sample and skip over the alternate channels
+      if (gNumChannels == 1) {
+        int i;
+        for (i = 0; i<numSamples; i++) {
+          ((uint16_t*)readBuf)[i] = ((uint16_t*)readBuf)[i*2];
+        }
+      }
+      
+      luaL_addlstring (&b, readBuf, numSamples * 2 * gNumChannels);
       requestSize -= readResult;
     }
     

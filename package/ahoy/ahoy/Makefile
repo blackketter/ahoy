@@ -54,8 +54,11 @@ define Package/ahoy/install
 	$(INSTALL_DIR) $(1)/ahoy/sounds
 	$(INSTALL_DATA) ./files/sounds/hail.wav $(1)/ahoy/sounds/hail.wav
 	$(INSTALL_DATA) ./files/sounds/1k.wav $(1)/ahoy/sounds/1k.wav
-	$(INSTALL_DATA) ./files/sounds/whistle.wav $(1)/ahoy/sounds/whistle.wav
 	$(INSTALL_DATA) ./files/sounds/vol.wav $(1)/ahoy/sounds/vol.wav
+
+	$(INSTALL_DATA) ./files/sounds/whistle.opus $(1)/ahoy/sounds/whistle.opus
+	$(INSTALL_DATA) ./files/sounds/setup-on.opus $(1)/ahoy/sounds/setup-on.opus
+	$(INSTALL_DATA) ./files/sounds/setup-off.opus $(1)/ahoy/sounds/setup-off.opus
 
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/i2s.so $(1)/usr/lib/lua

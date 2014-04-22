@@ -18,7 +18,9 @@ function dump( var, name )
         -- key contains special characters
         child = name .. '["' .. k .. '"]'
       end
-      dump( v, child )
+      if (k ~= "__index") then
+        dump( v, child )
+      end
     end
   end
 end
@@ -26,7 +28,10 @@ end
 --------------------------------------------------------------------------------
 
 function sleep(sec)
-  socket.select(nil, nil, sec)
+  debug("sleeping: " .. sec )
+  if (sec > 0) then
+    socket.select(nil, nil, sec)
+  end
 end
 
 function now()
@@ -36,15 +41,29 @@ end
 
 --------------------------------------------------------------------------------
 
-local debug_print = false
+debug_print = false
+debug_file = "/tmp/debug.log"
+debug_fileh = io.open(debug_file, "w")
+
+local lastdelta = socket.gettime()
 
 function debug(...) 
-  if (debug_print) then
+  if (debug_print or debug_fileh) then
     if (lastdelta == 0) then
     	lastdelta = socket.gettime()
     end
-     
-    print( socket.gettime()-lastdelta .. ":", ...)
+    
+    local prefix = string.format("%10.4f", socket.gettime()-lastdelta) .. ":"
+    
+    if (debug_print) then
+      print( prefix, ...)
+    end
+    
+    if (debug_fileh) then
+      debug_fileh:write(prefix .. "\t", ..., "\n")
+      debug_fileh:flush()
+    end
+    
   end
 end
     

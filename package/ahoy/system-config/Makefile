@@ -35,6 +35,8 @@ define Package/system-config/install
 	$(INSTALL_DATA) ./files/authorized_keys $(1)/etc/dropbear/authorized_keys
 	$(INSTALL_DIR) $(1)/etc/modules.d
 	$(INSTALL_DATA) ./files/94-spi-gpio-custom $(1)/etc/modules.d/94-spi-gpio-custom
+	$(INSTALL_DIR) $(1)/etc/avahi/services
+	$(INSTALL_DATA) ./files/ahoy.service $(1)/etc/avahi/services/ahoy.service
 endef
 
 $(eval $(call BuildPackage,system-config))

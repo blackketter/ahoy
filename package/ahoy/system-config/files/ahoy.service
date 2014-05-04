@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone='no'?><!--*-nxml-*-->
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+ <name replace-wildcards="yes">%h</name>
+  <service>
+   <type>_ahoy._tcp</type>
+   <port>14280</port>
+   <txt-record>path=/</txt-record>
+  </service>
+  <service>
+   <type>_ahoy._udp</type>
+   <port>14280</port>
+   <txt-record>path=/</txt-record>
+  </service>
+</service-group>

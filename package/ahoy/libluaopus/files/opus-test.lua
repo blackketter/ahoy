@@ -10,7 +10,7 @@ print(opus.version())
 print(opus.help())
 print()
 print('Creating encoder')
-local enc = opus.newencoder(48000, 2, 'voip')
+local enc = opus.newencoder(48000, 1, 'voip')
 dump( enc,"enc")
 dump( getmetatable(enc), "enc(metatable)");
 print()
@@ -18,10 +18,12 @@ print()
 local sampledata = string.rep('1234',480)
 
 print('sampledata length', #sampledata)
-
-local sampleframe = enc:encode(sampledata)
-
-print('sampleframe = length', #sampleframe)
+local i
+local sampleframe
+for i = 1, 1000 do
+ 	sampleframe = enc:encode(sampledata)
+	print("frame " .. i .. " length " .. #sampledata .. ", " .. #sampleframe)
+end
 
 dump( enc:bitrate(), 'bitrate' )
 

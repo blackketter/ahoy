@@ -250,8 +250,6 @@ LUALIB_API int opus_enc_new(lua_State *L){
 
   *enc = opus_encoder_create ( Fs,  channels,  app_int,  &error);
 
-  printf("created opus encoder: %x\n", (unsigned int)(*enc));
-  
   opus_check_error(L, error);
 
   return 1; 

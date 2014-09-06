@@ -166,7 +166,7 @@ function checkRecording()
     audio.stop()
 
     assert(recfile:close())
-    
+
     -- remove the last 0.1 second to hide the click from the button
     local i
     for i = 1, opus_frames_per_second/10 do
@@ -181,6 +181,8 @@ function checkRecording()
       -- throw out the short data
       opusdata = {}
     end                                                                                          
+
+    debug("opus frames truncated to: " .. #opusdata)
     
     -- if we are still holding down the button (i.e. maximum recording), wait until it's released
     while (buttons.state("main")) do                                                             
@@ -250,21 +252,31 @@ for i=0,math.huge do
   
   -- if we have audio data, then play it.
   if (#opusdata > 0) then
+    local finished = false
+    
     -- playback is blue
     leds.set(playback_color)
 
-    audio.play()
-      
+    
+    local playbackfile = assert(io.open("/tmp/playback", "w"))
+   
     local index = 1
---    local dec = opus.newdecoder(48000, 1)
+    local dec = opus.newdecoder(48000, 1)
+
+    whistle()
+    audio.play()
 
     while (not buttons.state("main")) do
   
       checkVolume()
       local decodedframe = dec:decode(opusdata[index])
-      debug("decoded frame of length " .. #decodedframe)
+      debug("decoded frame  " .. index .. " of length " .. #decodedframe .. " from " .. #(opusdata[index]))
       audio.write(decodedframe)
---      audio.write(opusdata[index])
+
+      if (not finished) then
+          playbackfile:write(decodedframe)
+      end
+
       index = index + 1
     
       -- we've reached the end
@@ -273,10 +285,14 @@ for i=0,math.huge do
         index = 1
         leds.set({red=1,blue=1,green=1,time=0.1},playback_color)
         debug("repeat sound")
-      end
+        if (not finished) then
+          assert(playbackfile:close())
+        end
+        finished = true
+     end
         
     end  
-  
+
     audio.stop()
     debug("stop playing")
     opusdata = {}

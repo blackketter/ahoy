@@ -6,7 +6,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
-#include <util/delay.h>
+#include <util/delay_basic.h>
 #include "stdlib.h"
 #include "spi.h"
 
@@ -37,6 +37,8 @@ FUSES =
 #define SETUP_BUTTON (8)
 #define BUTTON_MASK (0x0f)
 
+#define CLOCK_SPEED (8000000)
+
 volatile char button_state;                         // debounced and inverted button state: 
                                                     // bit = 1: button pressed 
 volatile char button_press;                         // button press detect 
@@ -62,7 +64,6 @@ volatile uint8_t resetTicks = 0;  // increases every button test, approx 120Hz.
 // these are also on the LED port
 #define CODEC_RESET (0x40)
 #define SYS_RESET (0x80)
-
 #define LED_MASK (0x07)
 
 
@@ -464,6 +465,14 @@ int main(void)
   cli();             // disable global interrupts
 
 //////////////////////////////////////////////////////////////////////////
+// Reset the CODEC
+//////////////////////////////////////////////////////////////////////////
+  LED_PORT_DIRECTION = CODEC_RESET; 
+  LED_PORT = 0;
+  
+  _delay_loop_2( (CLOCK_SPEED / 4) / 100);  // 10ms or 8MHz / 4 clocks/iteration * 1/100sec, or 20000 iterations
+  
+//////////////////////////////////////////////////////////////////////////
 // Initialize LEDs
 //////////////////////////////////////////////////////////////////////////
   LED_PORT_DIRECTION = LED_MASK;           /* make the LED pin an output */
@@ -509,6 +518,8 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////
 // End Initialization
 //////////////////////////////////////////////////////////////////////////
+  
+  
   
   // enable global interrupts:
   sei();

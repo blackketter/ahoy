@@ -16,6 +16,7 @@ Authors:       v0.01, Dean Blackketter, Ahoy
 #include <assert.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #include <avahi-client/client.h>
 #include <avahi-client/lookup.h>
@@ -44,6 +45,7 @@ LUALIB_API int avahi_close(lua_State *L);
 LUALIB_API int avahi_poll(lua_State *L);
 LUALIB_API int avahi_found(lua_State *L);
 LUALIB_API int avahi_status(lua_State *L);
+void* get_environ_ud(lua_State *L, const char* name);
 
 //------------------------------------------------------------------------------
 
@@ -61,6 +63,15 @@ static const luaL_reg avahi_functions[] = {
   {"status", avahi_status},
   {NULL, NULL}
 };
+
+//------------------------------------------------------------------------------
+// Utility
+//------------------------------------------------------------------------------
+void* get_environ_ud(lua_State *L, const char* name) {
+  lua_getfield(L, LUA_ENVIRONINDEX, name);
+  void** data = (void**)lua_touserdata (L, -1);
+  return *data;
+}
 
 //------------------------------------------------------------------------------
 // Callbacks
@@ -91,13 +102,13 @@ static void resolve_callback(
 
     switch (event) {
         case AVAHI_RESOLVER_FAILURE:
-            fprintf(stderr, "(Resolver) Failed to resolve service '%s' of type '%s' in domain '%s': %s\n", name, type, domain, avahi_strerror(avahi_client_errno(avahi_service_resolver_get_client(r))));
+//            fprintf(stderr, "(Resolver) Failed to resolve service '%s' of type '%s' in domain '%s': %s\n", name, type, domain, avahi_strerror(avahi_client_errno(avahi_service_resolver_get_client(r))));
             break;
 
         case AVAHI_RESOLVER_FOUND: {
             char a[AVAHI_ADDRESS_STR_MAX], *t;
 
-            fprintf(stderr, "Service '%s' of type '%s' in domain '%s':\n", name, type, domain);
+//            fprintf(stderr, "Service '%s' of type '%s' in domain '%s':\n", name, type, domain);
 
             avahi_address_snprint(a, sizeof(a), address);
             t = avahi_string_list_to_string(txt);
@@ -106,6 +117,16 @@ static void resolve_callback(
             
             // this table holds the data
             lua_newtable(L);
+            
+            
+            lua_pushstring(L, name);
+            lua_setfield(L, -2, "name");
+            
+            lua_pushstring(L, type);
+            lua_setfield(L, -2, "type");
+            
+            lua_pushstring(L, domain);
+            lua_setfield(L, -2, "domain");
             
             lua_pushstring(L, host_name);
             lua_setfield(L, -2, "host_name");
@@ -137,32 +158,13 @@ static void resolve_callback(
             lua_pushboolean (L, !!(flags & AVAHI_LOOKUP_RESULT_CACHED));
             lua_setfield(L, -2, "cached");
       
-            // combination of ip address and port number is the key, for uniqueness
-            char ip_port_key[AVAHI_ADDRESS_STR_MAX+10];
-            sprintf(ip_port_key,"%s:%u", a, port);
-            lua_setfield(L, -2, ip_port_key);
-            
+            char* key = malloc(strlen(name)+strlen(type)+strlen(domain)+2);
+            sprintf(key, "%s:%s:%s", name, type, domain);
+            lua_setfield(L, -2, key);
+            free(key);
+                        
             // pop off the found.table
             lua_pop(L, 1);
-            
-            // TBD - push this onto the found table
-            fprintf(stderr,
-                    "\t%s:%u (%s)\n"
-                    "\tTXT=%s\n"
-                    "\tcookie is %u\n"
-                    "\tis_local: %i\n"
-                    "\tour_own: %i\n"
-                    "\twide_area: %i\n"
-                    "\tmulticast: %i\n"
-                    "\tcached: %i\n",
-                    host_name, port, a,
-                    t,
-                    avahi_string_list_get_service_cookie(txt),
-                    !!(flags & AVAHI_LOOKUP_RESULT_LOCAL),
-                    !!(flags & AVAHI_LOOKUP_RESULT_OUR_OWN),
-                    !!(flags & AVAHI_LOOKUP_RESULT_WIDE_AREA),
-                    !!(flags & AVAHI_LOOKUP_RESULT_MULTICAST),
-                    !!(flags & AVAHI_LOOKUP_RESULT_CACHED));
 
             avahi_free(t);
         }
@@ -184,12 +186,10 @@ static void browse_callback(
 
     lua_State* L = userdata;
     
-    AvahiClient **client_ud = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.client");
-    AvahiClient *c = *client_ud;
-
-    AvahiSimplePoll **simple_poll_ud = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.simplepoll");
-    AvahiSimplePoll *simple_poll = *simple_poll_ud;
+    AvahiClient *c = get_environ_ud(L, "avahi.client");
     
+    AvahiSimplePoll *simple_poll = get_environ_ud(L, "avahi.simplepoll");
+
     assert(b);
     assert(c);
     assert(simple_poll);
@@ -199,45 +199,53 @@ static void browse_callback(
     switch (event) {
         case AVAHI_BROWSER_FAILURE:
 
-            fprintf(stderr, "(Browser) %s\n", avahi_strerror(avahi_client_errno(avahi_service_browser_get_client(b))));
+//            fprintf(stderr, "(Browser) %s\n", avahi_strerror(avahi_client_errno(avahi_service_browser_get_client(b))));
             avahi_simple_poll_quit(simple_poll);
             return;
 
         case AVAHI_BROWSER_NEW:
-            fprintf(stderr, "(Browser) NEW: service '%s' of type '%s' in domain '%s'\n", name, type, domain);
+//            fprintf(stderr, "(Browser) NEW: service '%s' of type '%s' in domain '%s'\n", name, type, domain);
 
             /* We ignore the returned resolver object. In the callback
                function we free it. If the server is terminated before
                the callback function is called the server will free
                the resolver for us. */
 
-            if (!(avahi_service_resolver_new(c, interface, protocol, name, type, domain, AVAHI_PROTO_UNSPEC, 0, resolve_callback, L)))
-                fprintf(stderr, "Failed to resolve service '%s': %s\n", name, avahi_strerror(avahi_client_errno(c)));
-
+            if (!(avahi_service_resolver_new(c, interface, protocol, name, type, domain, AVAHI_PROTO_UNSPEC, 0, resolve_callback, L))) {
+//                fprintf(stderr, "Failed to resolve service '%s': %s\n", name, avahi_strerror(avahi_client_errno(c)));
+            }
             break;
 
         case AVAHI_BROWSER_REMOVE:
-            fprintf(stderr, "(Browser) REMOVE: service '%s' of type '%s' in domain '%s'\n", name, type, domain);
+//            fprintf(stderr, "(Browser) REMOVE: service '%s' of type '%s' in domain '%s'\n", name, type, domain);
+            // remove from our local cache
+            
+            lua_getfield(L, LUA_ENVIRONINDEX, "found.table");
+            lua_pushnil(L);
+            
+            char* key = malloc(strlen(name)+strlen(type)+strlen(domain)+2);
+            sprintf(key, "%s:%s:%s", name, type, domain);
+            lua_setfield(L, -2, key);
+            free(key);
+
             break;
 
         case AVAHI_BROWSER_ALL_FOR_NOW:
         case AVAHI_BROWSER_CACHE_EXHAUSTED:
-            fprintf(stderr, "(Browser) %s\n", event == AVAHI_BROWSER_CACHE_EXHAUSTED ? "CACHE_EXHAUSTED" : "ALL_FOR_NOW");
+//            fprintf(stderr, "(Browser) %s\n", event == AVAHI_BROWSER_CACHE_EXHAUSTED ? "CACHE_EXHAUSTED" : "ALL_FOR_NOW");
             break;
     }
 }
 
-static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UNUSED void * userdata) {
+static void client_callback(AvahiClient *c, AvahiClientState state, void * userdata) {
     assert(c);
-    lua_State* L = userdata;
-    
-    AvahiSimplePoll **simple_poll_ud = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.simplepoll");
-    AvahiSimplePoll *simple_poll = *simple_poll_ud;
+    assert(userdata);
+    AvahiSimplePoll *simple_poll = userdata;
 
     /* Called whenever the client or server state changes */
 
     if (state == AVAHI_CLIENT_FAILURE) {
-        fprintf(stderr, "Server connection failure: %s\n", avahi_strerror(avahi_client_errno(c)));
+//        fprintf(stderr, "Server connection failure: %s\n", avahi_strerror(avahi_client_errno(c)));
         avahi_simple_poll_quit(simple_poll);
     }
 }
@@ -261,12 +269,12 @@ LUALIB_API int avahi_help(lua_State *L){
       // TODO
       "help() - return this message\n"
       "version() - return version string\n"
-      "init() - create and initialize the client\n"
+      "open() - create and initialize the client\n"
       "poll(sleep_ms) - poll the client to give time to the browsers\n"
       "browse(servicetype) - create and return a browser object that will look for services matching service type\n"
       "  browser:status() - return the status of the browser\n"
       "  browser:found() - return a table of all found clients\n"
-      "free() - free the client, call init() again to start over\n"
+      "close() - free the client, call init() again to start over\n"
       );
     return 1;
 }
@@ -290,10 +298,16 @@ LUALIB_API int avahi_open(lua_State *L) {
 
   AvahiClient *client = NULL;
 
+//  fprintf(stderr, "entering avahi_open\n");
+
+  simple_poll = avahi_simple_poll_new();
+  
   /* Allocate main loop object */
-  if (!(simple_poll = avahi_simple_poll_new())) {
+  if (!simple_poll) {
       return luaL_error(L, "Failed to create simple poll object."); 
   }
+  
+//  fprintf(stderr, "created simple poll object\n");
 
   AvahiSimplePoll** simple_poll_ud = (AvahiSimplePoll**)lua_newuserdata(L, sizeof(AvahiSimplePoll *));
   
@@ -303,12 +317,20 @@ LUALIB_API int avahi_open(lua_State *L) {
 
   /* Allocate a new client */
   int error;
-  client = avahi_client_new(avahi_simple_poll_get(simple_poll), 0, client_callback, NULL, &error);
+
+//  fprintf(stderr, "getting ap\n");
+
+  const AvahiPoll* ap = avahi_simple_poll_get(simple_poll);
+  
+//  fprintf(stderr, "creating client with ap: %x\n", (int)ap);
+
+  client = avahi_client_new(ap, 0, client_callback, (void*)simple_poll, &error);
 
   /* Check whether creating the client object succeeded */
   if (!client) {
       return luaL_error(L, "Failed to create client: %s", avahi_strerror(error)); 
   }
+//  fprintf(stderr, "created client object\n");
 
   AvahiClient**client_ud = (AvahiClient**)lua_newuserdata(L, sizeof(AvahiClient *));
   
@@ -318,33 +340,33 @@ LUALIB_API int avahi_open(lua_State *L) {
 
   return 0;
 }
+
 //------------------------------------------------------------------------------
 
 LUALIB_API int avahi_close(lua_State *L){
 
-  
-  AvahiServiceBrowser **browser = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.browser");
-
-  avahi_service_browser_free(*browser);
+  AvahiServiceBrowser *browser = get_environ_ud(L, "avahi.browser"); 
+  assert(browser);
+  avahi_service_browser_free(browser);
 
   // remove the entry from the table
   lua_pushnil(L);
   lua_setfield(L, LUA_ENVIRONINDEX,  "avahi.browser");
 
-  AvahiClient **client = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.client");
+  AvahiClient *client = get_environ_ud(L,  "avahi.client");
 
-  if (client && *client) {
-    avahi_client_free(*client);
+  if (client) {
+    avahi_client_free(client);
   }
 
   // remove the entry from the table
   lua_pushnil(L);
   lua_setfield(L, LUA_ENVIRONINDEX,  "avahi.client");
 
-  AvahiSimplePoll **simple_poll = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.simplepoll");
+  AvahiSimplePoll *simple_poll = get_environ_ud(L, "avahi.simplepoll");
 
-  if (*simple_poll) {
-    avahi_simple_poll_free(*simple_poll);
+  if (simple_poll) {
+    avahi_simple_poll_free(simple_poll);
   }
 
   // remove the entry from the table
@@ -363,15 +385,15 @@ LUALIB_API int avahi_poll(lua_State *L){
   
   if (params > 0) {
     if (lua_isnumber(L,1)) {
-      sleep_time = (double)luaL_checknumber(L, 2) * 1000;  // convert from ms to seconds
+      sleep_time = (double)luaL_checknumber(L, 1) * 1000;  // convert from ms to seconds
     } else {
       return luaL_argerror (L, 1, "expecting sleep time in seconds");
     }
   }
   
-  AvahiSimplePoll **simple_poll = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.simplepoll");
+  AvahiSimplePoll *simple_poll = get_environ_ud(L, "avahi.simplepoll");
 
-  int poll_result = avahi_simple_poll_iterate	(	*simple_poll, sleep_time);	
+  int poll_result = avahi_simple_poll_iterate	(	simple_poll, sleep_time);	
 
   if (poll_result < 0) {
     lua_pushinteger(L, poll_result);
@@ -392,14 +414,14 @@ LUALIB_API int avahi_browse(lua_State *L){
   if (n != 1) 
       return luaL_error(L, "Got %d arguments expected 1 (service type)", n); 
 
-  const char* servicetype = luaL_checkstring (L, 3);      
+  const char* servicetype = luaL_checkstring (L, 1);      
 
   // Allocate memory for a pointer to to object
   AvahiServiceBrowser **browser = (AvahiServiceBrowser **)lua_newuserdata(L, sizeof(AvahiServiceBrowser *));  
   
-  AvahiClient **client = luaL_checkudata(L, LUA_ENVIRONINDEX, "avahi.client");
+  AvahiClient *client = get_environ_ud(L, "avahi.client");
 
-  *browser = avahi_service_browser_new(*client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, servicetype, NULL, 0, browse_callback, L);
+  *browser = avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, servicetype, NULL, 0, browse_callback, L);
 
   if (!*browser) {
     return  luaL_error(L, "Failed to create new browser"); 

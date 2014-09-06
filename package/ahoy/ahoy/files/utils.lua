@@ -28,7 +28,7 @@ end
 --------------------------------------------------------------------------------
 
 function sleep(sec)
-  debug("sleeping: " .. sec )
+  log("sleeping: " .. sec )
   if (sec > 0) then
     socket.select(nil, nil, sec)
   end
@@ -41,32 +41,32 @@ end
 
 --------------------------------------------------------------------------------
 
-debug_print = false
-debug_file = "/tmp/debug.log"
-debug_fileh = io.open(debug_file, "w")
+log_print = false
+log_file = "/tmp/debug.log"
+log_fileh = io.open(log_file, "w")
 
 local lastdelta = socket.gettime()
 
-function debug(...) 
-  if (debug_print or debug_fileh) then
+function log(...) 
+  if (log_print or log_fileh) then
     if (lastdelta == 0) then
     	lastdelta = socket.gettime()
     end
     
     local prefix = string.format("%10.4f", socket.gettime()-lastdelta) .. ":"
     
-    if (debug_print) then
+    if (log_print) then
       print( prefix, ...)
     end
     
-    if (debug_fileh) then
-      debug_fileh:write(prefix .. "\t", ..., "\n")
-      debug_fileh:flush()
+    if (log_fileh) then
+      log_fileh:write(prefix .. "\t", ..., "\n")
+      log_fileh:flush()
     end
     
   end
 end
     
-function debug_on(enable)
-  debug_print = enable
+function log_on(enable)
+  log_print = enable
 end

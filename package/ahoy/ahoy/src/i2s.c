@@ -206,6 +206,7 @@ LUALIB_API int i2s_read(lua_State *L){
   
   // sometimes we read more than we ask for!
   char* readBuf = malloc(requestSize + READ_BUFFER_SIZE);
+//  fprintf(stderr, "Read request size: %d\n", requestSize); 
 
   if (!readBuf) {
     luaL_error(L, "Failed to allocate read buffer size %d", requestSize + READ_BUFFER_SIZE);

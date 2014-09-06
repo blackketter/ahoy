@@ -53,9 +53,25 @@ function audio.playFile(name)
     audio.pause()
     audio.close()
 
-    -- the volume sound would cause the input out of sync without this hack
-    audio.hack()
-        
+  elseif (suffix == 'pcm') then
+    local filehandle = assert(io.open(name, "r"))
+    local pcm = filehandle:read("*a");
+  
+    local modulo = #pcm % audio.frame_size
+  
+    -- pad to 768 bytes
+    if (modulo > 0) then
+      local tacked = string.rep (string.char(0), audio.frame_size - modulo)
+      pcm = pcm .. tacked
+    end
+  
+    -- saved files are all 48k/1ch/pcm
+    audio.open(16, 48000, 1, "w")
+    audio.write(pcm)
+    sleep(#pcm / (48000*2))
+    audio.pause()
+    audio.close()
+  
   elseif (suffix == 'opus') then
     local decoded = io.popen("opusdec --quiet " .. name .. " --no-dither -")
     -- assume opus files are mono, 48k
